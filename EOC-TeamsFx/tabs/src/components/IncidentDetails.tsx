@@ -1486,7 +1486,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "channels created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Channel created ", incidentId, this.props.userPrincipalName);
-
+                        // wait for 5 seconds to ensure the SharePoint site is available via graph API
+                        await this.timeout(5000);
                         // graph endpoint to get team site Id
                         const teamSiteURLGraphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id + graphConfig.rootSiteGraphEndpoint;
                         // retrieve team site details
@@ -1503,10 +1504,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "Assessment Channel and tab created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Assessment Channel and tab created ", incidentId, this.props.userPrincipalName);
-                        const siteBaseURL = "https://" + this.props.tenantName + "/sites/";
-
+                        
                         // create news channel and tab
-                        const newsTabLink = await this.createNewsTab(groupInfo, teamSiteDetails.webUrl, teamSiteManagedPathURL);
+                        await this.createNewsTab(groupInfo, teamSiteDetails.webUrl, teamSiteManagedPathURL);
                         console.log(constants.infoLogPrefix + "News tab created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "News tab create ", incidentId, this.props.userPrincipalName);
@@ -1517,7 +1517,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "Assessment list created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Assessment list created ", incidentId, this.props.userPrincipalName);
-
 
                         //change the M365 group visibility to Private
                         this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
