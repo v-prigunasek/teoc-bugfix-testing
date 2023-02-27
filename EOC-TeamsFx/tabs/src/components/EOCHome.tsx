@@ -1,10 +1,10 @@
 import { initializeIcons, MessageBar, MessageBarType } from '@fluentui/react';
 import { Button, Dialog, Loader } from "@fluentui/react-northstar";
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
-import { Providers, ProviderState, SimpleProvider } from '@microsoft/mgt-element';
+import { Providers, ProviderState, SimpleProvider, Graph } from '@microsoft/mgt-element';
 import { Client } from "@microsoft/microsoft-graph-client";
 import * as microsoftTeams from "@microsoft/teams-js";
-import { createMicrosoftGraphClient, TeamsUserCredential } from "@microsoft/teamsfx";
+import { MsGraphAuthProvider, TeamsUserCredential } from "@microsoft/teamsfx";
 import React from 'react';
 import LocalizedStrings from 'react-localization';
 import CommonService from "../common/CommonService";
@@ -24,10 +24,15 @@ let appInsights: ApplicationInsights;
 //Get site name from ARMS template(environment variable)
 //Replace spaces from environment variable to get site URL
 let siteName = process.env.REACT_APP_SHAREPOINT_SITE_NAME?.toString().replace(/\s+/g, '');
+
+//Get graph base URL from ARMS template(environment variable)
+let graphBaseURL = process.env.REACT_APP_GRAPH_BASE_URL?.toString().replace(/\s+/g, '');
+
 interface IEOCHomeState {
     showLoginPage: boolean;
     graph: Client;
     tenantName: string;
+    graphContextURL: string;
     siteId: string;
     showIncForm: boolean;
     showMessageBar: boolean;
@@ -68,12 +73,14 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
 
         // create graph client without asking for login based on previous sessions
         const credential = new TeamsUserCredential();
-        const graph = createMicrosoftGraphClient(credential, scope);
+        const graph = this.createMicrosoftGraphClient(credential, scope);
+        console.log(constants.infoLogPrefix + "graph ", graph);
 
         this.state = {
             showLoginPage: true,
             graph: graph,
             tenantName: '',
+            graphContextURL: '',
             siteId: '',
             showIncForm: false,
             showMessageBar: false,
@@ -141,6 +148,17 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
         }
     }
 
+    //create MS Grpah client
+    createMicrosoftGraphClient(credential: any, scopes: string | string[] | undefined) {
+
+        var authProvider = new MsGraphAuthProvider(credential, scopes);
+        var graphClient = Client.initWithMiddleware({
+            authProvider: authProvider,
+            baseUrl: graphBaseURL
+        });
+        return graphClient;
+    }
+
     // Initialize the toolkit and get access token
     async initGraphToolkit(credential: any, scopeVar: any) {
 
@@ -163,6 +181,9 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
 
         Providers.globalProvider = new SimpleProvider(getAccessToken, login, logout);
         Providers.globalProvider.setState(ProviderState.SignedIn);
+        //set graph context for mgt toolkit
+        const mgtgraph = new Graph(this.state.graph as any);
+        Providers.globalProvider.graph = mgtgraph;
     }
 
     // check if token is valid else show login to get token
@@ -188,7 +209,8 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
         };
         const credential = new TeamsUserCredential();
         await credential.login(scope);
-        const graph = createMicrosoftGraphClient(credential, scope); // create graph object
+        const graph = this.createMicrosoftGraphClient(credential, scope); // create graph object
+        console.log(constants.infoLogPrefix + "graph ", graph);
 
         const profile = await this.dataService.getGraphData(graphConfig.meGraphEndpoint, this.state.graph); // get user profile to validate the API
 
@@ -211,8 +233,11 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
     public async getTenantAndSiteDetails() {
         try {
             // get the tenant name
-            const tenantName = await this.dataService.getTenantDetails(graphConfig.rootSiteGraphEndpoint, this.state.graph);
+            const rootSite = await this.dataService.getTenantDetails(graphConfig.rootSiteGraphEndpoint, this.state.graph);
 
+            const tenantName = rootSite.siteCollection.hostname;
+
+            const graphContextURL = rootSite["@odata.context"].split("$")[0];
             // Form the graph end point to get the SharePoint site Id
             const urlForSiteId = graphConfig.spSiteGraphEndpoint + tenantName + ":/sites/" + siteName + "?$select=id";
 
@@ -221,6 +246,7 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
 
             this.setState({
                 tenantName: tenantName,
+                graphContextURL: graphContextURL,
                 siteId: siteDetails.id
             })
         } catch (error: any) {
@@ -290,7 +316,16 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
                 selectedIncident: incidentData
             })
         } catch (error) {
-
+            this.setState({
+                showIncForm: true,
+                selectedIncident: incidentData
+            });
+            console.error(
+                constants.errorLogPrefix + "_EOCHome_showEditForm \n",
+                JSON.stringify(error)
+            );
+            //log exception to AppInsights
+            this.dataService.trackException(appInsights, error, constants.componentNames.EOCHomeComponent, 'showEditForm', this.state.userPrincipalName);
         }
     }
 
@@ -469,7 +504,9 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
                                                                 {(this.state.isOwner && !this.state.showNoAccessMessage) ?
                                                                     <IncidentDetails
                                                                         graph={this.state.graph}
+                                                                        graphBaseUrl={graphBaseURL}
                                                                         tenantName={this.state.tenantName}
+                                                                        graphContextURL={this.state.graphContextURL}
                                                                         siteId={this.state.siteId}
                                                                         onBackClick={this.handleBackClick}
                                                                         showMessageBar={this.showMessageBar}
@@ -495,7 +532,9 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
                                                             :
                                                             <IncidentDetails
                                                                 graph={this.state.graph}
+                                                                graphBaseUrl={graphBaseURL}
                                                                 tenantName={this.state.tenantName}
+                                                                graphContextURL={this.state.graphContextURL}
                                                                 siteId={this.state.siteId}
                                                                 onBackClick={this.handleBackClick}
                                                                 showMessageBar={this.showMessageBar}

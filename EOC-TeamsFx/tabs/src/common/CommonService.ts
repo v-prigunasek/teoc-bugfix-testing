@@ -230,7 +230,7 @@ export default class CommonService {
     }
 
     //update teams display name
-    public async updateTeamsDisplayName(graphEndpoint: any, graph: Client, requestObj: any): Promise<any> {
+    public async sendGraphPatchRequest(graphEndpoint: any, graph: Client, requestObj: any): Promise<any> {
         return await graph.api(graphEndpoint).patch(requestObj);
     }
 
@@ -308,7 +308,7 @@ export default class CommonService {
     public async getTenantDetails(graphEndpoint: any, graph: Client): Promise<any> {
         try {
             const rootSite = await graph.api(graphEndpoint).get();
-            return rootSite.siteCollection.hostname;
+            return rootSite;
         } catch (error) {
             console.error(
                 constants.errorLogPrefix + "_CommonService_GetTenantDetails \n",
@@ -349,14 +349,13 @@ export default class CommonService {
     // get existing  members of the team
     public async getExistingTeamMembers(graphEndpoint: string, graph: Client): Promise<any> {
         return new Promise(async (resolve, reject) => {
-
-            // const graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + teamId + graphConfig.membersGraphEndpoint;
+        
             try {
                 const members = await this.getGraphData(graphEndpoint, graph);
                 resolve(members);
             } catch (ex) {
                 console.error(
-                    constants.errorLogPrefix + "UpdateIncident_GetExistingTeamMembers \n",
+                    constants.errorLogPrefix + "CommonService_GetExistingTeamMembers \n",
                     JSON.stringify(ex)
                 );
                 reject(ex);

@@ -33,7 +33,9 @@ const calloutProps = { gapSpace: 0 };
 const hostStyles: Partial<ITooltipHostStyles> = { root: { display: 'inline-block', cursor: 'pointer' } };
 export interface IIncidentDetailsProps {
     graph: Client;
+    graphBaseUrl: any;
     tenantName: string;
+    graphContextURL: string;
     siteId: string;
     onBackClick(showMessageBar: boolean): void;
     showMessageBar(message: string, type: string): void;
@@ -79,6 +81,7 @@ export interface IIncidentDetailsState {
     saveDefaultRoleCheck: any;
     saveIncidentTypeDefaultRoleCheck: any;
     isEditMode: boolean;
+    graphContextURL: string;
 }
 
 // sets the initial values for required fields validation object
@@ -131,7 +134,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             incidentTypeRoleDefaultData: [],
             saveDefaultRoleCheck: false,
             saveIncidentTypeDefaultRoleCheck: false,
-            isEditMode: false
+            isEditMode: false,
+            graphContextURL: this.props.graphContextURL
         };
         this.onRoleChange = this.onRoleChange.bind(this);
         this.onTextInputChange = this.onTextInputChange.bind(this);
@@ -139,7 +143,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         this.onAddNewRoleChange = this.onAddNewRoleChange.bind(this);
         this.onIncidentTypeChange = this.onIncidentTypeChange.bind(this);
         this.onIncidentStatusChange = this.onIncidentStatusChange.bind(this);
-        this.onRoleChange = this.onRoleChange.bind(this);
 
         // localized messages for people pickers
         LocalizationHelper.strings = {
@@ -419,7 +422,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 selctedIncCommander.push({
                     displayName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
                     userPrincipalName: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
-                    id: selectedValue.detail[0] ? selectedValue.detail[0].id : ''
+                    id: selectedValue.detail[0] ? selectedValue.detail[0].id.includes("@") ? selectedValue.detail[0].id.split("@")[0] : selectedValue.detail[0].id : ''
                 })
             }
             else {
@@ -429,7 +432,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             incInfo.incidentCommander = {
                 userName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
                 userEmail: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
-                userId: selectedValue.detail[0] ? selectedValue.detail[0].id : ''
+                userId: selectedValue.detail[0] ? selectedValue.detail[0].id.includes("@") ? selectedValue.detail[0].id.split("@")[0] : selectedValue.detail[0].id : ''
             }
 
             this.setState({
@@ -700,12 +703,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 selectedUsersArr.push({
                     displayName: user.displayName.replace(",", ""),
                     userPrincipalName: user.userPrincipalName,
-                    id: user.id
+                    id: user.id.includes("@") ? user.id.split("@")[0] : user.id
                 });
                 return {
                     "userName": user ? user.displayName.replace(",", "") : "",
                     "userEmail": user ? user.userPrincipalName : "",
-                    "userId": user ? user.id : "",
+                    "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
                 }
             });
 
@@ -723,12 +726,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 selectedUsersArr.push({
                     displayName: user.displayName.replace(",", ""),
                     userPrincipalName: user.userPrincipalName,
-                    id: user.id
+                    id: user.id.includes("@") ? user.id.split("@")[0] : user.id
                 });
                 return {
                     "userName": user ? user.displayName.replace(",", "") : "",
                     "userEmail": user ? user.userPrincipalName : "",
-                    "userId": user ? user.id : "",
+                    "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
                 }
             });
 
@@ -1305,7 +1308,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                             // update team display name
                             let teamDisplayName = this.formatTeamDisplayName(this.state.incDetailsItem.incidentId, this.state.incDetailsItem);
                             this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId;
-                            await this.dataService.updateTeamsDisplayName(this.graphEndpoint, this.props.graph, { "displayName": teamDisplayName })
+                            await this.dataService.sendGraphPatchRequest(this.graphEndpoint, this.props.graph, { "displayName": teamDisplayName })
 
                             const usersObj = this.compareTeamsMembership(this.props.existingTeamMembers);
 
@@ -1323,30 +1326,34 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 await this.addUsersToTeam(usersObj.newAddedUsers, false);
                             }
 
-                            // Get all existing tags
-                            let tagsList = await this.getAllTags();
-                            // check and get if new tags needs to be created
-                            const newRole = this.checkIfNewTagCreationNeeded(tagsList.value);
+                            if (this.props.graphBaseUrl === "https://graph.microsoft.com/") {
+                                // Get all existing tags
+                                let tagsList = await this.getAllTags();
+                                // check and get if new tags needs to be created
+                                const newRole = this.checkIfNewTagCreationNeeded(tagsList.value);
 
-                            if (newRole.length > 0) {
-                                // create the role object from role assignements needed for tag creation
-                                const roles = this.createNewRoleObject(newRole);
-                                // create the tag for new role
-                                await this.createTagObject(this.state.teamGroupId, roles);
-                            }
+                                if (newRole.length > 0) {
+                                    // create the role object from role assignements needed for tag creation
+                                    const roles = this.createNewRoleObject(newRole);
+                                    // create the tag for new role
+                                    await this.createTagObject(this.state.teamGroupId, roles);
+                                }
 
-                            const usersForTags: any = [];
-                            this.state.roleAssignments.forEach(roles => {
-                                roles.userDetailsObj.forEach(users => {
-                                    usersForTags.push({ role: roles.role, userId: users.userId });
+                                const usersForTags: any = [];
+                                this.state.roleAssignments.forEach(roles => {
+                                    roles.userDetailsObj.forEach(users => {
+                                        usersForTags.push({ role: roles.role, userId: users.userId });
+                                    })
                                 })
-                            })
-                            await this.addUsersToTag(usersForTags, tagsList.value, false);
+                                await this.addUsersToTag(usersForTags, tagsList.value, false);
 
+                                if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
+                                    // add incident commander to tag
+                                    await this.addUsersToTag([this.state.incDetailsItem.incidentCommander.userId], tagsList.value, true);
+
+                                }
+                            }
                             if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
-                                // add incident commander to tag
-                                await this.addUsersToTag([this.state.incDetailsItem.incidentCommander.userId], tagsList.value, true);
-
                                 // Remove old incident commander
                                 await this.removeUsersFromTeam(usersObj.removeIncCommander);
                             }
@@ -1479,10 +1486,19 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "channels created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Channel created ", incidentId, this.props.userPrincipalName);
-                        const siteURL = "https://" + this.props.tenantName + "/sites/" + groupInfo.mailNickname;
+
+                        // graph endpoint to get team site Id
+                        const teamSiteURLGraphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id + graphConfig.rootSiteGraphEndpoint;
+                        // retrieve team site details
+                        const teamSiteDetails = await this.dataService.getGraphData(teamSiteURLGraphEndpoint, this.props.graph);
+                        console.log(constants.infoLogPrefix + "Site details retrieved");
+
+                        //get the team site managed path
+                        const teamSiteManagedPathURL = teamSiteDetails.webUrl.split(teamSiteDetails.siteCollection.hostname)[1];
+                        console.log(constants.infoLogPrefix + "Site ManagedPath", teamSiteManagedPathURL);
 
                         // create assessment channel and tab
-                        await this.createAssessmentChannelAndTab(groupInfo.id, siteURL, groupInfo.mailNickname);
+                        await this.createAssessmentChannelAndTab(groupInfo.id, teamSiteDetails.webUrl, teamSiteManagedPathURL);
 
                         console.log(constants.infoLogPrefix + "Assessment Channel and tab created");
                         //log trace
@@ -1490,22 +1506,23 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         const siteBaseURL = "https://" + this.props.tenantName + "/sites/";
 
                         // create news channel and tab
-                        await this.createNewsTab(groupInfo, siteBaseURL);
+                        const newsTabLink = await this.createNewsTab(groupInfo, teamSiteDetails.webUrl, teamSiteManagedPathURL);
                         console.log(constants.infoLogPrefix + "News tab created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "News tab create ", incidentId, this.props.userPrincipalName);
 
-                        // create URL to get site Id
-                        const urlForSiteId = graphConfig.spSiteGraphEndpoint + this.props.tenantName + ":/sites/" + groupInfo.mailNickname + "?$select=id";
-
-                        const siteDetails = await this.dataService.getGraphData(urlForSiteId, this.props.graph);
-                        console.log(constants.infoLogPrefix + "Site details retrieved");
+                        await this.createAssessmentList(groupInfo.mailNickname, teamSiteDetails.id);
 
                         // call method to create assessment list
-                        await this.createAssessmentList(groupInfo.mailNickname, siteDetails.id);
                         console.log(constants.infoLogPrefix + "Assessment list created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Assessment list created ", incidentId, this.props.userPrincipalName);
+
+
+                        //change the M365 group visibility to Private
+                        this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
+                        await this.dataService.sendGraphPatchRequest(this.graphEndpoint, this.props.graph, { "visibility": "Private" })
+                        console.log(constants.infoLogPrefix + "Group setting changed to Private");
 
                         const updateItemObj = {
                             TeamId: teamInfo.id,
@@ -1658,19 +1675,19 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 const membersArr: any = [];
                 this.state.roleAssignments.forEach(roles => {
                     roles.userDetailsObj.forEach(user => {
-                        if (membersArr.indexOf(graphConfig.usersGraphEndpoint + user.userId) === -1) {
-                            membersArr.push(graphConfig.usersGraphEndpoint + user.userId);
+                        if (membersArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId) === -1) {
+                            membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId);
                         }
                     });
                 });
 
                 const ownerArr: any = [];
-                ownerArr.push(graphConfig.usersGraphEndpoint + incDetails.incidentCommander.userId);
+                ownerArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + incDetails.incidentCommander.userId);
 
                 // add current user as a owner if already not present so that we can perform teams creation
                 // and sharepoint site related operations on associated team site
-                if (ownerArr.indexOf(graphConfig.usersGraphEndpoint + this.props.currentUserId) === -1) {
-                    ownerArr.push(graphConfig.usersGraphEndpoint + this.props.currentUserId)
+                if (ownerArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + this.props.currentUserId) === -1) {
+                    ownerArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + this.props.currentUserId)
                 }
 
                 //format team display name
@@ -1683,7 +1700,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         displayName: teamDisplayName,
                         mailNickname: `${constants.teamEOCPrefix}_${incId}`,
                         description: incDetails.incidentDesc,
-                        visibility: "Private",
+                        visibility: "Public",
                         groupTypes: ["Unified"],
                         mailEnabled: true,
                         securityEnabled: true,
@@ -1700,7 +1717,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         displayName: teamDisplayName, // `${constants.teamEOCPrefix}-${incId}-${incDetails.incidentType}-${incDetails.startDateTime}`,
                         mailNickname: `${constants.teamEOCPrefix}_${incId}`,
                         description: incDetails.incidentDesc,
-                        visibility: "Private",
+                        visibility: "Public",
                         groupTypes: ["Unified"],
                         mailEnabled: true,
                         securityEnabled: true,
@@ -1888,7 +1905,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     usersToAdd.push({
                         "@odata.type": "microsoft.graph.aadUserConversationMember",
                         "roles": ["owner"],
-                        "user@odata.bind": graphConfig.addUsersGraphEndpoint + "('" + user.userId + "')"
+                        "user@odata.bind": this.state.graphContextURL + graphConfig.usersGraphEndpoint + "('" + user.userId + "')"
                     });
                 });
             }
@@ -1901,7 +1918,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         usersToAdd.push({
                             "@odata.type": "microsoft.graph.aadUserConversationMember",
                             "roles": [],
-                            "user@odata.bind": graphConfig.addUsersGraphEndpoint + "('" + user.userId + "')"
+                            "user@odata.bind": this.state.graphContextURL + graphConfig.usersGraphEndpoint + "('" + user.userId + "')"
                         });
                     }
 
@@ -1960,7 +1977,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         }
 
                         if (existingTagDetails.length > 0) {
-                            this.graphEndpoint = graphConfig.betaGraphEndpoint + this.state.teamGroupId + graphConfig.tagsGraphEndpoint + "/" + existingTagDetails[0].id + graphConfig.membersGraphEndpoint;
+                            this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.tagsGraphEndpoint + "/" + existingTagDetails[0].id + graphConfig.membersGraphEndpoint;
 
                             let addMember = await this.dataService.sendGraphPostRequest(this.graphEndpoint, this.props.graph, members[0]);
 
@@ -2027,7 +2044,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     this.dataService.trackException(this.props.appInsights, updationError, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_CreateTeam', this.props.userPrincipalName);
                     if (updationError.statusCode === 409 && updationError.message === "Team already exists") {
                         isTeamCreated = true;
-                        this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + groupInfo.id;
+                        this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
                         result.data = await this.dataService.getGraphData(this.graphEndpoint, this.props.graph)
                     }
                 }
@@ -2174,10 +2191,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 //Associate Assessment via sharepoint app
                 const assessmentTabObj = {
                     "displayName": constants.GroundAssessments,
-                    "teamsApp@odata.bind": graphConfig.assessmentTabTeamsAppIdGraphEndpoint,
+                    "teamsApp@odata.bind": this.state.graphContextURL + graphConfig.assessmentTabTeamsAppIdGraphEndpoint,
                     "configuration": {
                         "entityId": uuidv4(),
-                        "contentUrl": `${site_base_url}/_layouts/15/teamslogon.aspx?spfx=true&dest=/sites/${site_name}/Lists/${siteConfig.lists[0].listURL}/AllItems.aspx`,
+                        "contentUrl": `${site_base_url}/_layouts/15/teamslogon.aspx?spfx=true&dest=${site_name}/Lists/${siteConfig.lists[0].listURL}/AllItems.aspx`,
                         "removeUrl": null,
                         "websiteUrl": null
                     }
@@ -2203,7 +2220,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     }
 
     // create News tab
-    private createNewsTab(team_info: any, siteBaseURL: string): Promise<any> {
+    private createNewsTab(team_info: any, teamSiteURL: string, teamSiteManagedPath: string): Promise<any> {
         return new Promise(async (resolve, reject) => {
             try {
                 this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + team_info.id + graphConfig.channelsGraphEndpoint;
@@ -2220,12 +2237,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
                 const addTabObj = {
                     "displayName": constants.News,
-                    "teamsApp@odata.bind": graphConfig.newsTabTeamsAppIdGraphEndpoint,
+                    "teamsApp@odata.bind": this.state.graphContextURL + graphConfig.newsTabTeamsAppIdGraphEndpoint,
                     "configuration": {
                         "entityId": uuidv4(),
-                        "contentUrl": `${siteBaseURL}${team_info.mailNickname}/_layouts/15/teamslogon.aspx?spfx=true&dest=/sites/${team_info.mailNickname}/_layouts/15/news.aspx`,
+                        "contentUrl": `${teamSiteURL}/_layouts/15/teamslogon.aspx?spfx=true&dest=${teamSiteManagedPath}/_layouts/15/news.aspx`,
                         "removeUrl": null,
-                        "websiteUrl": `${siteBaseURL}${team_info.mailNickname}/_layouts/15/news.aspx`
+                        "websiteUrl": `${teamSiteURL}/_layouts/15/news.aspx`
                     }
                 }
                 const addTabGraphEndpoint = graphConfig.teamsGraphEndpoint + "/" + team_info.id + graphConfig.channelsGraphEndpoint + "/" + channelResult.id + graphConfig.tabsGraphEndpoint;
@@ -2267,8 +2284,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         template: "genericList",
                     },
                 };
-
-                this.graphEndpoint = graphConfig.sitesGraphEndpoint + "/" + siteId + graphConfig.listsGraphEndpoint;
+                this.graphEndpoint = graphConfig.spSiteGraphEndpoint + siteId + graphConfig.listsGraphEndpoint;
 
                 const listCreationRes = await this.dataService.sendGraphPostRequest(this.graphEndpoint, this.props.graph, listSchema);
 
@@ -2303,7 +2319,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 while (!allDone) {
                     let role = roles[counter];
                     try {
-                        this.graphEndpoint = graphConfig.betaGraphEndpoint + teamId + graphConfig.tagsGraphEndpoint;
+                        this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + teamId + graphConfig.tagsGraphEndpoint;
                         const members: any = [];
                         role.userDetailsObj.forEach((users: any) => {
                             members.push({
@@ -2404,7 +2420,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     // Get all existing tags for the team
     private async getAllTags(): Promise<any> {
         return new Promise(async (resolve, reject) => {
-            this.graphEndpoint = graphConfig.betaGraphEndpoint + this.state.teamGroupId + "/" + graphConfig.tagsGraphEndpoint;
+            this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.tagsGraphEndpoint;
             try {
                 const existingTags = await this.dataService.getGraphData(this.graphEndpoint, this.props.graph);
                 resolve(existingTags);
