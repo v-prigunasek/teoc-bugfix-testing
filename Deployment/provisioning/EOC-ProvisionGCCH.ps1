@@ -28,12 +28,12 @@ if (-not (Get-Module -ListAvailable -Name PnP.PowerShell )) {
 }
 
 $TenantAdminURL = "https://$TenantName-admin.sharepoint.us"
-$TenantName = "$TenantName.onmicrosoft.us"
+$Tenant = "$TenantName.onmicrosoft.us"
 $EOCSiteURL = "https://$TenantName.sharepoint.us/sites/$SiteURL"
 
 
 Connect-PnPOnline -Url $TenantAdminURL  -Interactive -AzureEnvironment USGovernmentHigh `
-  -ClientId $ClientID -Tenant $TenantName
+  -ClientId $ClientID -Tenant $Tenant
 
 try {
     Write-Host "Checking if site already exists at $EOCSiteURL"
@@ -65,7 +65,7 @@ try {
 
     
   Connect-PnPOnline -Url $EOCSiteURL  -Interactive -AzureEnvironment USGovernmentHigh `
-     -ClientId $ClientID -Tenant $TenantName
+     -ClientId $ClientID -Tenant $Tenant
 
     Write-Host "Creating lists in $SiteName site"
 
