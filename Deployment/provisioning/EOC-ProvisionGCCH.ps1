@@ -31,9 +31,7 @@ $TenantAdminURL = "https://$TenantName-admin.sharepoint.us"
 $Tenant = "$TenantName.onmicrosoft.us"
 $EOCSiteURL = "https://$TenantName.sharepoint.us/sites/$SiteURL"
 
-
-Connect-PnPOnline -Url $TenantAdminURL  -Interactive -AzureEnvironment USGovernmentHigh `
-  -ClientId $ClientID -Tenant $Tenant
+Connect-PnPOnline -Url $TenantAdminURL -Interactive -AzureEnvironment USGovernmentHigh -ClientId $ClientID -Tenant $Tenant
 
 try {
     Write-Host "Checking if site already exists at $EOCSiteURL"
@@ -50,8 +48,8 @@ try {
     }
 
     try{
-        if(($TenantURL+$EOCSiteURL).Length -lt 128){
-            New-PnPSite -Type TeamSiteWithoutMicrosoft365Group -Title $SiteName -Url $TenantURL$EOCSiteURL -Owner $AdminEmail -ErrorAction Stop -WarningAction SilentlyContinue
+        if(($EOCSiteURL).Length -lt 128){
+            New-PnPSite -Type TeamSiteWithoutMicrosoft365Group -Title $SiteName -Url $EOCSiteURL -Owner $AdminEmail -ErrorAction Stop -WarningAction SilentlyContinue
         }
         else{
             Write-Host "Site creation failed. Site URL cannot have more than 128 characters." -ErrorAction Stop
@@ -64,8 +62,7 @@ try {
     }
 
     
-  Connect-PnPOnline -Url $EOCSiteURL  -Interactive -AzureEnvironment USGovernmentHigh `
-     -ClientId $ClientID -Tenant $Tenant
+  Connect-PnPOnline -Url $EOCSiteURL -Interactive -AzureEnvironment USGovernmentHigh -ClientId $ClientID -Tenant $Tenant
 
     Write-Host "Creating lists in $SiteName site"
 
