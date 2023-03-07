@@ -419,6 +419,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             const selctedIncCommander = [];
             if (selectedValue.detail.length > 0) {
                 inputValidationObj.incidentCommandarHasError = false;
+                /*gcch tenant has user id in the format of userObjectId@tenantId in the API response,
+                so parsing the user id value with @ symbol to pass it to a people picker control*/
                 selctedIncCommander.push({
                     displayName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
                     userPrincipalName: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
@@ -1326,7 +1328,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 await this.addUsersToTeam(usersObj.newAddedUsers, false);
                             }
 
-                            if (this.props.graphBaseUrl === "https://graph.microsoft.com/") {
+                            if (this.props.graphBaseUrl === constants.defaultGraphBaseURL) {
                                 // Get all existing tags
                                 let tagsList = await this.getAllTags();
                                 // check and get if new tags needs to be created
@@ -1486,8 +1488,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "channels created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Channel created ", incidentId, this.props.userPrincipalName);
+                        
+                        //added for GCCH tenant
+                        if (this.props.graphBaseUrl !== constants.defaultGraphBaseURL) {
                         // wait for 5 seconds to ensure the SharePoint site is available via graph API
                         await this.timeout(5000);
+                        }
                         // graph endpoint to get team site Id
                         const teamSiteURLGraphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id + graphConfig.rootSiteGraphEndpoint;
                         // retrieve team site details
@@ -1504,7 +1510,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "Assessment Channel and tab created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Assessment Channel and tab created ", incidentId, this.props.userPrincipalName);
-                        
+
                         // create news channel and tab
                         await this.createNewsTab(groupInfo, teamSiteDetails.webUrl, teamSiteManagedPathURL);
                         console.log(constants.infoLogPrefix + "News tab created");
@@ -1518,10 +1524,13 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Assessment list created ", incidentId, this.props.userPrincipalName);
 
-                        //change the M365 group visibility to Private
-                        this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
-                        await this.dataService.sendGraphPatchRequest(this.graphEndpoint, this.props.graph, { "visibility": "Private" })
-                        console.log(constants.infoLogPrefix + "Group setting changed to Private");
+
+                        //change the M365 group visibility to Private for GCCH tenant
+                        if (this.props.graphBaseUrl !== constants.defaultGraphBaseURL) {
+                            this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
+                            await this.dataService.sendGraphPatchRequest(this.graphEndpoint, this.props.graph, { "visibility": "Private" })
+                            console.log(constants.infoLogPrefix + "Group setting changed to Private");
+                        }
 
                         const updateItemObj = {
                             TeamId: teamInfo.id,
@@ -1691,7 +1700,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
                 //format team display name
                 let teamDisplayName = this.formatTeamDisplayName(incId, incDetails);
-
+                let groupVisibility = this.props.graphBaseUrl === constants.defaultGraphBaseURL ? "Private" : "Public"
                 if (membersArr.length > 0) {
                     // create object to create teams group
                     //update display name based on team name configuration
@@ -1699,7 +1708,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         displayName: teamDisplayName,
                         mailNickname: `${constants.teamEOCPrefix}_${incId}`,
                         description: incDetails.incidentDesc,
-                        visibility: "Public",
+                        visibility: groupVisibility,
                         groupTypes: ["Unified"],
                         mailEnabled: true,
                         securityEnabled: true,
@@ -1716,7 +1725,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         displayName: teamDisplayName, // `${constants.teamEOCPrefix}-${incId}-${incDetails.incidentType}-${incDetails.startDateTime}`,
                         mailNickname: `${constants.teamEOCPrefix}_${incId}`,
                         description: incDetails.incidentDesc,
-                        visibility: "Public",
+                        visibility: groupVisibility,
                         groupTypes: ["Unified"],
                         mailEnabled: true,
                         securityEnabled: true,

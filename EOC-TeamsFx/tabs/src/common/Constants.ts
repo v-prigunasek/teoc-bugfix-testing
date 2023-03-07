@@ -1,3 +1,4 @@
+export const defaultGraphBaseURL = "https://graph.microsoft.com/"
 export const AppVersion = "1.0 ";
 export const EOCAppName = "MIFTEOC";
 export const all = "All";

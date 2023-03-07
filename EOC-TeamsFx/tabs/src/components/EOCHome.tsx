@@ -74,7 +74,7 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
         // create graph client without asking for login based on previous sessions
         const credential = new TeamsUserCredential();
         const graph = this.createMicrosoftGraphClient(credential, scope);
-        console.log(constants.infoLogPrefix + "graph ", graph);
+        console.log(constants.infoLogPrefix + "graph", graph);
 
         this.state = {
             showLoginPage: true,
@@ -148,7 +148,7 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
         }
     }
 
-    //create MS Grpah client
+    //create Microsoft Graph client
     createMicrosoftGraphClient(credential: any, scopes: string | string[] | undefined) {
 
         var authProvider = new MsGraphAuthProvider(credential, scopes);
@@ -182,8 +182,7 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
         Providers.globalProvider = new SimpleProvider(getAccessToken, login, logout);
         Providers.globalProvider.setState(ProviderState.SignedIn);
         //set graph context for mgt toolkit
-        const mgtgraph = new Graph(this.state.graph as any);
-        Providers.globalProvider.graph = mgtgraph;
+        Providers.globalProvider.graph = new Graph(this.state.graph as any);
     }
 
     // check if token is valid else show login to get token
@@ -210,7 +209,7 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
         const credential = new TeamsUserCredential();
         await credential.login(scope);
         const graph = this.createMicrosoftGraphClient(credential, scope); // create graph object
-        console.log(constants.infoLogPrefix + "graph ", graph);
+        console.log(constants.infoLogPrefix + "graph", graph);
 
         const profile = await this.dataService.getGraphData(graphConfig.meGraphEndpoint, this.state.graph); // get user profile to validate the API
 
