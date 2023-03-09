@@ -27,6 +27,7 @@ let siteName = process.env.REACT_APP_SHAREPOINT_SITE_NAME?.toString().replace(/\
 
 //Get graph base URL from ARMS template(environment variable)
 let graphBaseURL = process.env.REACT_APP_GRAPH_BASE_URL?.toString().replace(/\s+/g, '');
+graphBaseURL = graphBaseURL ? graphBaseURL : constants.defaultGraphBaseURL
 
 interface IEOCHomeState {
     showLoginPage: boolean;
