@@ -76,8 +76,8 @@ Below are the steps you need to perform to provision the TEOC site, 
     * Tenant Name – Name of the tenant where root TEOC site needs to be provisioned (Ex: Contoso)
     * Tenant Admin Email – Email of tenant admin account (Ex: `abc@contoso.com`) 
     * Azure App Id / Cient Id - The client Id of the PnP PowerShell Azure App Registration from the above step.
-    * SharePoint Site Name - Name of the site that needs to be provisioned for TEOC application (Ex: Teams EOC Site)
-    >Note: Make a note of the site name _without spaces_ (i.e. The internal name of the site, which is shown in the URL - Ex: ../sites/**TeamsEOCSite**), this will be needed later while deploying the resources in Step #3.
+    * SharePoint Site Name - Name of the site that needs to be provisioned for TEOC application (Ex: TEOCSite)
+    >Note: Make a note of the site name _without spaces_ (i.e. The internal name of the site, which is shown in the URL - Ex: **TEOCSite**), this will be needed later while deploying the resources in Step #3.
 
     ![Provisioning Scripts](./Images/ProvisioningScriptGCCH.png)
 
@@ -174,7 +174,7 @@ You need to first create a new Azure AD Application to secure API permissions. R
     1. **Client ID**: The application (client) ID of the app registered
     2. **Client Secret**: The client secret Value of the app registered
     3. **Tenant Id**: The tenant Id
-    4. **Share Point Site Name**: Name of the SharePoint site that was provisioned in step 1 (Ex: **TeamsEOCSite**)
+    4. **Share Point Site Name**: Name of the SharePoint site that was provisioned in step 1 (Ex: **TEOCSite**)
 
 1. Other fields have pre-populated default values, do not change it unless you want it to be customized depending on the need.
 

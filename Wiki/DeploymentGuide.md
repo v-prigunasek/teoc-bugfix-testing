@@ -58,7 +58,7 @@ Below are the steps you need to perform to provision the TEOC site, 
     * Tenant Name – Name of the tenant where root TEOC site needs to be provisioned (Ex: Contoso)
     * Tenant Admin Email – Email of tenant admin account (Ex: `abc@contoso.com`) 
     * SharePoint Site Name - Name of the site that needs to be provisioned for TEOC application (Ex: Teams EOC Site)
-    >Note: Make a note of the site name _without spaces_ (i.e. The internal name of the site, which is shown in the URL - Ex: /sites/**TeamsEOCSite**), this will be needed later while deploying the resources in Step #3.
+    >Note: Make a note of the site name _without spaces_ (i.e. The internal name of the site, which is shown in the URL - Ex: **TeamsEOCSite**), this will be needed later while deploying the resources in Step #3.
 
     ![Provisioning Scripts](./Images/ProvisioningScript.png)
 
