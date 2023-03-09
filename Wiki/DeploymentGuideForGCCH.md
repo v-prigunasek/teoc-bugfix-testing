@@ -29,38 +29,57 @@ To begin deployment for Microsoft Teams Emergency Operations Center (TEOC) appli
 
 ## 1. Provisioning TEOC Site
 
-To provision the SharePoint site and lists for the TEOC app, 
+### Azure App Registration for PnP PowerShell
 
-* Clone the TEOC [repository](https://github.com/OfficeDev/microsoft-teams-emergency-operations-center.git) locally.
-* Open the `Deployment/provisioning` folder to get the latest provisioning files i.e `EOC-Provision.ps1` and `EOC-SiteTemplate.xml`
-
-    ![Provisioning Scripts](./Images/Provisioning_Scripts.png)
-
->Note: Run below commands with Windows Powershell as Administrator
-
-* Run the below command, this will allow you to run **EOC-Provision.ps1** script. By default, the execution policy is restricted for windows computer. You may change it back to restricted after deployment is completed.
-    >Note: Non-windows computer users can skip this as it is unrestricted by default for them.
+* Open a new PowerShell console (v5.1 or Core 7.x) as an administrator (right-click, Run As Administrator). Ensure unrestricted execution policy with the following:
     ```
     Set-ExecutionPolicy -ExecutionPolicy RemoteSigned
     ```
+* Ensure the PnP.PowerShell module is loaded with the following:
+    ```
+    Import-Module -Name PnP.PowerShell
+    ```
+    If you have multiple versions of PnP.PowerShell installed, target a latest version with the -RequiredVersion flag.
 
-* Run the below command to unblock the deployment script.
+* Run the following script ONCE per tenant to create an Azure App Registration for PnP:
+
+    Login with user credentials that is assigned with Global Administrator role.
+If you have previously registered PnP.PowerShell, check the App Registration in the Azure portal and make sure it has delegated permissions for AllSites.FullControl and User.Read.All. Also make sure that you've granted consent as an Administrator.
+    >Note: Replace tenant with your tenant name.
+    ```
+    Register-PnPAzureADApp -ApplicationName "PnP PowerShell" -Tenant [TENANT].onmicrosoft.us -Interactive `
+    -AzureEnvironment USGovernmentHigh -SharePointDelegatePermissions AllSites.FullControl, User.Read.All
+    ```
+    Please check the [Troubleshooting](Troubleshooting) guide to install the prerequisites, if you face any issues in running the above command.
+* Provide consent on behalf of your organization
+
+    ![Provisioning Scripts](./Images/PnPConsent.png)
+
+* Make a note of the **AzureAppId/ClientId** GUID returned from above step as it will be needed in the below step to provision the SharePoint site. This is the **ClientId** of the new PnP PowerShell Azure App Registration.
+
+### Run the PnP Provisioning script
+To provision the SharePoint site and lists for the TEOC app, 
+
+* Clone the TEOC [repository](https://github.com/OfficeDev/microsoft-teams-emergency-operations-center.git) locally.
+* Open the `Deployment/provisioning` folder to get the latest provisioning files i.e `EOC-ProvisionGCCH.ps1` and `EOC-SiteTemplate.xml`
+* Open a PowerShell console as an administrator (right-click, Run As Administrator). Run the below command to unblock the deployment script.
     >Note: File path should be set to provisioning folder. 
     ```
-    Unblock-File -Path .\EOC-Provision.ps1
+    Unblock-File -Path .\EOC-ProvisionGCCH.ps1
     ```
 
 Below are the steps you need to perform to provision the TEOC site,  
 
 1. Run the PowerShell script as Administrator, script will ask for below inputs,
     
-    * XML file path – enter fully qualified path of the XML file (Ex: C:/Scripts/EOC-SiteTemplate.xml) 
+    * XML file path – Enter fully qualified path of the XML file (Ex: C:/Scripts/EOC-SiteTemplate.xml) 
     * Tenant Name – Name of the tenant where root TEOC site needs to be provisioned (Ex: Contoso)
     * Tenant Admin Email – Email of tenant admin account (Ex: `abc@contoso.com`) 
+    * Azure App Id / Cient Id - The client Id of the PnP PowerShell Azure App Registration from the above step.
     * SharePoint Site Name - Name of the site that needs to be provisioned for TEOC application (Ex: Teams EOC Site)
-    >Note: Make a note of the site name _without spaces_ (i.e. The internal name of the site, which is shown in the URL - Ex: /sites/**TeamsEOCSite**), this will be needed later while deploying the resources in Step #3.
+    >Note: Make a note of the site name _without spaces_ (i.e. The internal name of the site, which is shown in the URL - Ex: ../sites/**TeamsEOCSite**), this will be needed later while deploying the resources in Step #3.
 
-    ![Provisioning Scripts](./Images/ProvisioningScript.png)
+    ![Provisioning Scripts](./Images/ProvisioningScriptGCCH.png)
 
 2. Once the above details are provided, script will check if the “PnP.PowerShell” module is installed, if not, it will install the module.
 3. If you are running the **PnP.PowerShell** scripts for the first time for that tenant, it will ask for a list of permissions to be granted. 
@@ -74,7 +93,7 @@ Below are the steps you need to perform to provision the TEOC site, 
 
 6. Please make sure to grant permissions to users who need to use TEOC application, follow the below steps provide permissions,
     -   Navigate to the URL for the TEOC site as the administrator.
-    -   If you are using the default configuration, this can be found at _`https://<yourtenant>.sharepoint.com/sites/<SiteName>/`_.
+    -   If you are using the default configuration, this can be found at _`https://<yourtenant>.sharepoint.us/sites/<SiteName>/`_.
         - Select site permissions
 
             ![SitePermission](./Images/SitePermission.png)
@@ -101,7 +120,7 @@ Below are the steps you need to perform to provision the TEOC site, 
 
 You need to first create a new Azure AD Application to secure API permissions. Registering your application establishes a trust relationship between your app and the Microsoft identity platform. 
 
-1. Log in to the Azure Portal using SharePoint Tenant account where you want the app to be installed, and go to the [App registrations](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps) blade.
+1. Log in to the Azure Portal using SharePoint Tenant account where you want the app to be installed, and go to the [App registrations](https://portal.azure.us/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps) blade.
 
 1. Click **New registration** to create an Azure AD application.
     - **Name**: Name of your Teams App.
@@ -126,7 +145,13 @@ You need to first create a new Azure AD Application to secure API permissions. R
 ## 3. Deploy to your Azure subscription
 1. Click on the **Deploy to Azure** button below.
 
-    [![Deploy to Azure](./Images/DeployButton.png)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FOfficeDev%2Fmicrosoft-teams-emergency-operations-center%2Fmain%2FDeployment%2Fazuredeploy.json)
+    Click on this link to deploy the resources with Azure subscription in a GCCH tenant 
+
+    [![Deploy to Azure](./Images/DeployButton.png)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FOfficeDev%2Fmicrosoft-teams-emergency-operations-center%2Fmain%2FDeployment%2Fazuredeploygcch.json)
+
+    Click on this link to deploy the resources with Azure subscription in a Commercial or GCC tenant.
+
+    [![Deploy to Azure](./Images/DeployButton.png)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FOfficeDev%2Fmicrosoft-teams-emergency-operations-center%2Fmain%2FDeployment%2Fazuredeploygcchcrosstenant.json)
 
 1. When prompted, log in to your Azure subscription.
 
@@ -149,29 +174,32 @@ You need to first create a new Azure AD Application to secure API permissions. R
     1. **Client ID**: The application (client) ID of the app registered
     2. **Client Secret**: The client secret Value of the app registered
     3. **Tenant Id**: The tenant Id
-    4. **Share Point Site Name**: Name of the SharePoint site that was provisioned in step 1 (It should be the exact site name from the URL Ex: **TeamsEOCSite**)
+    4. **Share Point Site Name**: Name of the SharePoint site that was provisioned in step 1 (Ex: **TeamsEOCSite**)
 
 1. Other fields have pre-populated default values, do not change it unless you want it to be customized depending on the need.
 
-    ![Azure App Deploy](./Images/App_Deploy.png)
+    ![Azure App Deploy](./Images/ResourceGroupGCCH.png)
 
 1. Click on **Review+Create**. Post successful validation clicks on Create. The deployment will take around 30 to 40 Minutes. Please wait for the deployment to be completed and then proceed with the below steps. 
 
 ## 4. Set-up Authentication
 
-1. Go to **App Registrations** page [here](https://portal.azure.com/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps) and select the application (TEOC specific) which you created in step 1. Follow the below steps to set up the authentication for the application.
+1. Go to **App Registrations** page [here](https://portal.azure.us/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps) and select the application (TEOC specific) which you created in step 1. Follow the below steps to set up the authentication for the application.
 
     > Note: For following steps you need to use **appDomain** convention for the app service URL.
-    - appDomain is the App service URL without https:// or <<**baseResourceName**>>.azurewebsites.net
+
+    > If the resources are deployed with GCCH tenant subscription, then the appDomain is <<**baseResourceName**>>**.azurewebsites.us**
+
+    > If the resources are deployed with commercial tenant subscription, then the appDomain is <<**baseResourceName**>>**.azurewebsites.net**
 
 1. Under **Manage**, click on **Authentication** to bring up authentication settings.
 
     1. Click on **Add a Platform**. Select Web and add Redirect URIs in below format:
-        - **Redirect URI**: Enter `https://%appDomain%/auth-end.html` for the URL (Ex: `https://<<baseResourceName>>.azurewebsites.net/auth-end.html`)
+        - **Redirect URI**: Enter `https://%appDomain%/auth-end.html` for the URL (Ex: `https://<<baseResourceName>>.azurewebsites.us/auth-end.html`)
 
     1. Click on **Add a Platform**. Select Single-page application and add Redirect URIs in below format:
-        - **Redirect URI**: Enter `https://%appDomain%/auth-end.html?clientId= %clientId%` for the URL (Ex: `https://<<baseResourceName>>.azurewebsites.net/auth-end.html?clientId=<<Client Id>>`)
-        - Click on Add URI and add another entry as, `https://%appDomain%/blank-auth-end.html` (Ex: `https://<<baseResourceName>>.azurewebsites.net/blank-auth-end.html`)     
+        - **Redirect URI**: Enter `https://%appDomain%/auth-end.html?clientId= %clientId%` for the URL (Ex: `https://<<baseResourceName>>.azurewebsites.us/auth-end.html?clientId=<<Client Id>>`)
+        - Click on Add URI and add another entry as, `https://%appDomain%/blank-auth-end.html` (Ex: `https://<<baseResourceName>>.azurewebsites.us/blank-auth-end.html`)     
 
     1. Click **Save** to commit your changes.
 
@@ -179,7 +207,7 @@ You need to first create a new Azure AD Application to secure API permissions. R
 
     1. Back under **Manage**, click on **Expose an API**.
 
-    1. Click on the **Set** link next to **Application ID URI**, and change the value to `api://%appDomain%/%clientId%` (Ex: `api://<<baseResourceName>>.azurewebsites.net/<<Client Id>>`.
+    1. Click on the **Set** link next to **Application ID URI**, and change the value to `api://%appDomain%/%clientId%` (Ex: `api://<<baseResourceName>>.azurewebsites.us/<<Client Id>>`.
 
     1. Click **Save** to commit your changes.
 

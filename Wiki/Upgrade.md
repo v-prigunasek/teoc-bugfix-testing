@@ -24,6 +24,8 @@
   >Note: If you have already customized the site name during inital deployment, then use that sitename instead of TEOCSite.
 
  ![AppService](./Images/AddAppSetting.png)
+
+  3. Click on "New application setting" and add **REACT_APP_GRAPH_BASE_URL** as the Name and **https://graph.microsoft.com/** as the value and click on OK.
   
 
 ### 3. Sync latest version
