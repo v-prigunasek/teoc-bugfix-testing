@@ -34,8 +34,7 @@
     "validator": ">=13.7.0",
     "node-notifier": ">=8.0.1",
     "yargs-parser": ">=5.0.1",
-    "mime": ">=1.4.1",
-    "decode-uri-component": ">=0.2.1"
+    "mime": ">=1.4.1"    
   },
   "dependencies": {
     "@microsoft/decorators": "1.13.0",
