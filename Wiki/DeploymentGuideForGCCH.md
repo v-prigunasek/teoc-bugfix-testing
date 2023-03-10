@@ -145,13 +145,7 @@ You need to first create a new Azure AD Application to secure API permissions. R
 ## 3. Deploy to your Azure subscription
 1. Click on the **Deploy to Azure** button below.
 
-    Click on this link to deploy the resources with Azure subscription in a GCCH tenant 
-
     [![Deploy to Azure](./Images/DeployButton.png)](https://portal.azure.us/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FOfficeDev%2Fmicrosoft-teams-emergency-operations-center%2Fmain%2FDeployment%2Fazuredeploygcch.json)
-
-    Click on this link to deploy the resources with Azure subscription in a Commercial or GCC tenant.
-
-    [![Deploy to Azure](./Images/DeployButton.png)](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FOfficeDev%2Fmicrosoft-teams-emergency-operations-center%2Fmain%2FDeployment%2Fazuredeploygcchcrosstenant.json)
 
 1. When prompted, log in to your Azure subscription.
 
@@ -174,7 +168,7 @@ You need to first create a new Azure AD Application to secure API permissions. R
     1. **Client ID**: The application (client) ID of the app registered
     2. **Client Secret**: The client secret Value of the app registered
     3. **Tenant Id**: The tenant Id
-    4. **Share Point Site Name**: Name of the SharePoint site that was provisioned in step 1 (Ex: **TEOCSite**)
+    4. **Share Point Site Name**: Name of the SharePoint site that was provisioned in step 1 (It should be the exact site name from the URL Ex: **TEOCSite**)
 
 1. Other fields have pre-populated default values, do not change it unless you want it to be customized depending on the need.
 
@@ -187,11 +181,9 @@ You need to first create a new Azure AD Application to secure API permissions. R
 1. Go to **App Registrations** page [here](https://portal.azure.us/#blade/Microsoft_AAD_IAM/ActiveDirectoryMenuBlade/RegisteredApps) and select the application (TEOC specific) which you created in step 1. Follow the below steps to set up the authentication for the application.
 
     > Note: For following steps you need to use **appDomain** convention for the app service URL.
+     - appDomain is the App service URL without https:// or <<**baseResourceName**>>.azurewebsites.us
 
-    > If the resources are deployed with GCCH tenant subscription, then the appDomain is <<**baseResourceName**>>**.azurewebsites.us**
-
-    > If the resources are deployed with commercial tenant subscription, then the appDomain is <<**baseResourceName**>>**.azurewebsites.net**
-
+  
 1. Under **Manage**, click on **Authentication** to bring up authentication settings.
 
     1. Click on **Add a Platform**. Select Web and add Redirect URIs in below format:
@@ -203,7 +195,7 @@ You need to first create a new Azure AD Application to secure API permissions. R
 
     1. Click **Save** to commit your changes.
 
-        ![Azure Authentication](./Images/Setup_Authentication.png)
+        ![Azure Authentication](./Images/APIAuthenticationGCCH.png)
 
     1. Back under **Manage**, click on **Expose an API**.
 
@@ -220,7 +212,7 @@ You need to first create a new Azure AD Application to secure API permissions. R
 
     1. Click **Add scope** to commit your changes.
 
-        ![API Add Scope](./Images/Add_Scope.png)
+        ![API Add Scope](./Images/ExposeAPIGCCH.png)
 
     1. Click **Add a client application**, under **Authorized client applications**. In the flyout that appears, enter the following values:
         * **Client ID**: `5e3ce6c0-2b1f-4285-8d4b-75ee78787346` (_Teams WebApp Client Id_)
@@ -314,7 +306,7 @@ To create the team's package,
     * `"contentUrl": "https://<<appDomain>>/index.html#/tab"`
     * `"websiteUrl": "https://<<appDomain>>/index.html#/tab"`
 
-    ![Manifest Updates](./Images/Manifest_Placeholders.png)
+    ![Manifest Updates](./Images/ManifestGCCH.png)
 
 1. Update the validDomains and webApplicationInfo details.
 
@@ -334,7 +326,7 @@ To create the team's package,
         } 
      ```
 
-    ![Manifest Updates](./Images/Manifest_Placeholders_2.png)
+    ![Manifest Updates](./Images/ManifestGCCH1.png)
 
 1. Create a ZIP package with the manifest.json and resources folder with color.png, and outline.png. The two image files are the icons for your app in Teams.
 
@@ -367,15 +359,15 @@ To create the team's package,
 
 1. Open SharePoint admin center.
 
-    ![SharePoint Admin Center](./Images/SharePoint_Admin_Center.png)
+    ![SharePoint Admin Center](./Images/SPAdminGCCH.png)
 
 1. Click on **More features** menu item. Locate the Apps section and click the Open button.
 
-    ![SharePoint More Features](./Images/SharePoint_More_Features.png)
+    ![SharePoint More Features](./Images/SPApps.png)
 
 1. Click on **App Catalog** link. 
 
-    ![App Catalog](./Images/App_Catalog.png)
+    ![App Catalog](./Images/SPAppCatalogGCCH.png)
 
     _If you do not see an app catalog available, use the instructions [here](https://docs.microsoft.com/en-us/sharepoint/use-app-catalog#step-1-create-the-app-catalog-site-collection) to create a new app catalog before continuing._
 

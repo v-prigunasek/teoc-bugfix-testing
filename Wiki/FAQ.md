@@ -50,6 +50,6 @@ The fsevents library is causing the app service deployment to fail for already d
 
 Yes, TEOC v1.0 supports the desktop, mobile and tab devices.
 
-## 6. Does the app works in GCCH tenant?
+## 6. Does the app works in GCC/GCCH tenant?
 
-Yes, TEOC v1.0 works in GCCH tenant.
+Yes, TEOC v1.0 works in Commercial, GCC and GCCH tenants.
