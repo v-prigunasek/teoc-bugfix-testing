@@ -34,7 +34,13 @@
     "validator": ">=13.7.0",
     "node-notifier": ">=8.0.1",
     "yargs-parser": ">=5.0.1",
-    "mime": ">=1.4.1"    
+    "mime": ">=1.4.1",
+    "css-modules-loader-core@1.1.0":{
+      "postcss": "7.0.36"
+    },
+    "@microsoft/sp-css-loader@1.16.1":{
+      "postcss": "8.2.13" 
+    }
   },
   "dependencies": {
     "@microsoft/decorators": "1.13.0",
@@ -49,6 +55,7 @@
     "@microsoft/sp-module-interfaces": "1.13.0",
     "@microsoft/sp-tslint-rules": "1.13.0",
     "@types/webpack-env": "1.13.1",
-    "gulp": "~4.0.2"
+    "gulp": "~4.0.2",
+    "cssnano":"5.1.15"
     }
 }
