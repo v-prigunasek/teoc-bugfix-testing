@@ -1328,33 +1328,32 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 await this.addUsersToTeam(usersObj.newAddedUsers, false);
                             }
 
-                            if (this.props.graphBaseUrl === constants.defaultGraphBaseURL) {
-                                // Get all existing tags
-                                let tagsList = await this.getAllTags();
-                                // check and get if new tags needs to be created
-                                const newRole = this.checkIfNewTagCreationNeeded(tagsList.value);
+                            // Get all existing tags
+                            let tagsList = await this.getAllTags();
+                            // check and get if new tags needs to be created
+                            const newRole = this.checkIfNewTagCreationNeeded(tagsList.value);
 
-                                if (newRole.length > 0) {
-                                    // create the role object from role assignements needed for tag creation
-                                    const roles = this.createNewRoleObject(newRole);
-                                    // create the tag for new role
-                                    await this.createTagObject(this.state.teamGroupId, roles);
-                                }
-
-                                const usersForTags: any = [];
-                                this.state.roleAssignments.forEach(roles => {
-                                    roles.userDetailsObj.forEach(users => {
-                                        usersForTags.push({ role: roles.role, userId: users.userId });
-                                    })
-                                })
-                                await this.addUsersToTag(usersForTags, tagsList.value, false);
-
-                                if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
-                                    // add incident commander to tag
-                                    await this.addUsersToTag([this.state.incDetailsItem.incidentCommander.userId], tagsList.value, true);
-
-                                }
+                            if (newRole.length > 0) {
+                                // create the role object from role assignements needed for tag creation
+                                const roles = this.createNewRoleObject(newRole);
+                                // create the tag for new role
+                                await this.createTagObject(this.state.teamGroupId, roles);
                             }
+
+                            const usersForTags: any = [];
+                            this.state.roleAssignments.forEach(roles => {
+                                roles.userDetailsObj.forEach(users => {
+                                    usersForTags.push({ role: roles.role, userId: users.userId });
+                                })
+                            })
+                            await this.addUsersToTag(usersForTags, tagsList.value, false);
+
+                            if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
+                                // add incident commander to tag
+                                await this.addUsersToTag([this.state.incDetailsItem.incidentCommander.userId], tagsList.value, true);
+
+                            }
+
                             if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
                                 // Remove old incident commander
                                 await this.removeUsersFromTeam(usersObj.removeIncCommander);
@@ -1488,11 +1487,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         console.log(constants.infoLogPrefix + "channels created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Channel created ", incidentId, this.props.userPrincipalName);
-                        
+
                         //added for GCCH tenant
                         if (this.props.graphBaseUrl !== constants.defaultGraphBaseURL) {
-                        // wait for 5 seconds to ensure the SharePoint site is available via graph API
-                        await this.timeout(5000);
+                            // wait for 5 seconds to ensure the SharePoint site is available via graph API
+                            await this.timeout(5000);
                         }
                         // graph endpoint to get team site Id
                         const teamSiteURLGraphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id + graphConfig.rootSiteGraphEndpoint;
