@@ -229,7 +229,7 @@ export default class CommonService {
         return await graph.api(graphEndpoint).delete();
     }
 
-    //update teams display name
+    // generic method for a Patch graph query
     public async sendGraphPatchRequest(graphEndpoint: any, graph: Client, requestObj: any): Promise<any> {
         return await graph.api(graphEndpoint).patch(requestObj);
     }
