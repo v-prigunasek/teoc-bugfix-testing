@@ -1,6 +1,5 @@
 import React from 'react';
-import '../scss/TeamNameConfig.module.scss'
-import { Loader, ChevronStartIcon, FormDropdown, FormInput, Button } from "@fluentui/react-northstar";
+import { Loader, FormDropdown, FormInput, Button } from "@fluentui/react-northstar";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
 import * as constants from '../common/Constants';
@@ -10,7 +9,6 @@ import siteConfig from '../config/siteConfig.json';
 import * as graphConfig from '../common/graphConfig';
 import { Client } from "@microsoft/microsoft-graph-client";
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
-import { localizedStrings } from '../locale/LocaleStrings';
 
 export interface ITeamNameConfigState {
     showLoader: boolean;
@@ -23,27 +21,32 @@ export interface ITeamNameConfigState {
 
 export interface ITeamNameConfigProps {
     localeStrings: any;
-    onBackClick(showMessageBar: boolean): void;
+    onBackClick(showMessageBar: string): void;
     siteId: string;
     graph: Client;
     appInsights: ApplicationInsights;
     userPrincipalName: any;
     showMessageBar(message: string, type: string): void;
     hideMessageBar(): void;
+    currentThemeName: string;
 }
 
 const teamNameConfigString = "TeamNameConfiguration";
 export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, ITeamNameConfigState>  {
-    constructor(props: any) {
+    //ref variables declaration to create unique reference for DOM element
+    private prefixOrder: any;
+    constructor(props: ITeamNameConfigProps) {
         super(props);
         this.state = {
-            showLoader: true,
-            loaderMessage: this.props.localeStrings.loaderMessage,
+            showLoader: false,
+            loaderMessage: this.props.localeStrings.genericLoaderMessage,
             configListData: { itemId: 0, Title: '', value: {} },
             configValue: {},
             previewString: '',
             prefixIsMissing: true
         }
+        //initialize ref object to assign unique reference for DOM element.
+        this.prefixOrder = React.createRef();
     }
 
     //common service object
@@ -53,22 +56,26 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
     public async componentDidMount() {
         // Get Team Name Config List Data
         this.getTeamNameConfigData();
+        //setting initial focus
+        setTimeout(() => {
+            this.prefixOrder.current.querySelector("button").focus()
+        }, 2000);
     }
 
     //get data from team name configurations list
     getTeamNameConfigData = async () => {
         try {
             //graph endpoint to get data from team name configuration list
-            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.teamNameConfigList}/items?$expand=fields&$Top=5000`;
-            const configData = await this.dataService.getConfigData(graphEndpoint, this.props.graph, 'TeamNameConfig');
+            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items?$expand=fields&$Top=5000`;
+            let configData = await this.dataService.getConfigData(graphEndpoint, this.props.graph, 'TeamNameConfig');
+            configData = { ...configData, value: JSON.parse(configData.value) };
             const sortedData = this.dataService.sortConfigData(configData.value);
             const previewString = this.formatPreviewString(sortedData);
             this.setState({
                 configListData: configData,
                 configValue: configData.value,
                 previewString: previewString,
-                showLoader: false,
-                prefixIsMissing: configData.value[constants.teamNameConfigConstants.Prefix] !== constants.teamNameConfigConstants.DontInclude && configData.value[constants.teamNameConfigConstants.Prefix] === '' ? true : false
+                prefixIsMissing: configData.value[constants.teamNameConfigConstants.Prefix] !== constants.teamNameConfigConstants.DontInclude && configData.value[constants.teamNameConfigConstants.PrefixValue] === '' ? true : false
             })
         }
         catch (error: any) {
@@ -76,6 +83,7 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                 constants.errorLogPrefix + `${teamNameConfigString}_GetConfiguration \n`,
                 JSON.stringify(error)
             );
+
             // Log Exception
             this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, `${teamNameConfigString}_GetConfiguration`, this.props.userPrincipalName);
         }
@@ -98,7 +106,7 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                     Value: JSON.stringify(this.state.configValue)
                 }
                 //graph endpoint to update team name config data
-                let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.teamNameConfigList}/items/${this.state.configListData.itemId}/fields`;
+                let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items/${this.state.configListData.itemId}/fields`;
                 const configUpdated = await this.dataService.updateTeamNameConfigData(graphEndpoint, this.props.graph, updatedValues);
                 if (configUpdated) {
                     console.log(constants.infoLogPrefix + "Team Name Configurations Updated");
@@ -108,7 +116,7 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                     });
                     //log trace
                     this.dataService.trackTrace(this.props.appInsights, 'Team Name Configurations Updated', '', this.props.userPrincipalName);
-                    this.props.onBackClick(true);
+                    this.props.onBackClick(constants.messageBarType.success);
                 }
                 else {
                     console.log(constants.infoLogPrefix + "Team Name Configurations Update Failed");
@@ -314,44 +322,39 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
     }
 
     public render() {
+      
         return (<>
-            <div className="team-name-config">
+            <div className="team-name-config-wrapper">
                 <>
                     {this.state.showLoader &&
                         <div className="loader-bg">
                             <div className="loaderStyle">
-                                <Loader label={this.state.loaderMessage} size="largest" />
+                                {this.state.loaderMessage === this.props.localeStrings.genericLoaderMessage ?
+                                    <Loader label={this.state.loaderMessage} size="largest" />
+                                    :
+                                    <Loader aria-live="polite" role="alert" label={this.state.loaderMessage} size="largest" />
+                                }
                             </div>
                         </div>
                     }
                     <div>
-                        <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="team-name-config-path">
-                            <label>
-                                <span onClick={() => this.props.onBackClick(false)} className="go-back">
-                                    <ChevronStartIcon id="path-back-icon" />
-                                    <span className="back-label" title="Back">Back</span>
-                                </span> &nbsp;&nbsp;
-                                <span className="right-border">|</span>
-                                <span>&nbsp;&nbsp;{this.props.localeStrings.labelTeamNameConfig}</span>
-                            </label>
-                        </div>
                         <div className='team-name-config-form-area'>
                             <div className="container">
-                                <div className="team-name-config-page-heading">
-                                    {this.props.localeStrings.formTitleTeamNameConfig}
-                                </div>
                                 <div>
                                     <Row xl={2} lg={2} md={2} sm={2} xs={2}>
                                         <Col xl={5} lg={6} md={7} sm={12} xs={12}>
                                             <Row xl={2} lg={2} md={2} sm={2} xs={2}>
                                                 <Col xl={5} lg={5} md={5} sm={5} xs={5}>
+                                                    <label className="order-label">{this.props.localeStrings.orderLabel}</label>
                                                     <FormDropdown
-                                                        label={this.props.localeStrings.orderLabel}
+                                                        ref={this.prefixOrder}
+                                                        label={{ content: this.props.localeStrings.prefixLabel + this.props.localeStrings.orderLabel, styles: { display: "none" } }}
+                                                        aria-label={this.props.localeStrings.prefixLabel + this.props.localeStrings.orderLabel}
+                                                        role="combobox"
                                                         items={constants.teamNameConfigOrderDropdown}
                                                         className="team-name-config-order-dropdown"
                                                         value={this.state.configValue.Prefix}
-                                                        onChange={(evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.Prefix)}
-
+                                                        onChange={(_evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.Prefix)}
                                                     />
                                                 </Col>
                                                 <Col xl={7} lg={7} md={5} sm={7} xs={7}>
@@ -372,16 +375,19 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                                                             prefixIsMissing: this.state.configValue.Prefix !== constants.teamNameConfigConstants.DontInclude && event.target.value === '' ? true : false
                                                         })}
                                                     />
-                                                    {this.state.prefixIsMissing ? <label className="message-label" >{this.props.localeStrings.prefixValueRequired}</label> : <></>}
+                                                    {this.state.prefixIsMissing && !this.state.showLoader ? <label aria-live="polite" role="alert" className="message-label" >{this.props.localeStrings.prefixValueRequired}</label> : <></>}
                                                 </Col>
                                             </Row>
                                             <Row xl={2} lg={2} md={2} sm={2} xs={2}>
                                                 <Col xl={5} lg={5} md={5} sm={5} xs={5}>
                                                     <FormDropdown
                                                         items={constants.teamNameConfigOrderDropdown}
+                                                        label={{ content: this.props.localeStrings.incidentNameLabel + this.props.localeStrings.orderLabel, styles: { display: "none" } }}
+                                                        aria-label={this.props.localeStrings.incidentNameLabel + this.props.localeStrings.orderLabel}
+                                                        role="combobox"
                                                         className="team-name-config-order-dropdown"
                                                         value={this.state.configValue.IncidentName}
-                                                        onChange={(evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.IncidentName)}
+                                                        onChange={(_evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.IncidentName)}
                                                     />
                                                 </Col>
                                                 <Col xl={7} lg={7} md={5} sm={7} xs={7}>
@@ -392,9 +398,12 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                                                 <Col xl={5} lg={5} md={5} sm={5} xs={5}>
                                                     <FormDropdown
                                                         items={constants.teamNameConfigOrderDropdown}
+                                                        label={{ content: this.props.localeStrings.incidentTypeLabel + this.props.localeStrings.orderLabel, styles: { display: "none" } }}
+                                                        aria-label={this.props.localeStrings.incidentTypeLabel + this.props.localeStrings.orderLabel}
+                                                        role="combobox"
                                                         className="team-name-config-order-dropdown"
                                                         value={this.state.configValue.IncidentType}
-                                                        onChange={(evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.IncidentType)}
+                                                        onChange={(_evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.IncidentType)}
                                                     />
                                                 </Col>
                                                 <Col xl={7} lg={7} md={5} sm={7} xs={7}>
@@ -405,6 +414,9 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                                                 <Col xl={5} lg={5} md={5} sm={5} xs={5}>
                                                     <FormDropdown
                                                         items={constants.teamNameConfigOrderDropdown}
+                                                        label={{ content: this.props.localeStrings.startDate + this.props.localeStrings.orderLabel, styles: { display: "none" } }}
+                                                        aria-label={this.props.localeStrings.startDate + this.props.localeStrings.orderLabel}
+                                                        role="combobox"
                                                         className="team-name-config-order-dropdown"
                                                         value={this.state.configValue.StartDate}
                                                         onChange={(evt, val) => this.updateOrder(val, this.state.configValue, constants.teamNameConfigConstants.StartDate)}
@@ -422,7 +434,7 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                                                     <img src={require("../assets/Images/PreviewIcon.svg").default}
                                                         alt="Preview"
                                                         className="team-name-config-preview-img"
-                                                        title="Preview"
+                                                        title={this.props.localeStrings.previewLabel}
                                                     />
                                                 </Col>
                                                 <Col xl={10} lg={9} md={12} sm={10} xs={12} className="team-name-config-order-preview-area">
@@ -437,22 +449,20 @@ export class TeamNameConfig extends React.PureComponent<ITeamNameConfigProps, IT
                                         </Col>
                                     </Row>
                                 </div>
-                                <div className="team-name-config-btn-area">
+                                <div className="admin-settings-btn-wrapper">
                                     <Button
-                                        onClick={() => this.props.onBackClick(false)}
-                                        className='team-name-config-back-btn'
+                                        onClick={() => this.props.onBackClick("")}
+                                        className={`admin-settings-back-btn${this.props.currentThemeName === constants.contrastMode ? " back-btn-contrast" : ""}`}
                                         title={this.props.localeStrings.btnBack}
-                                    >
-                                        <label className="team-name-config-back-btn-label">{this.props.localeStrings.btnBack}</label>
-                                    </Button>
+                                        content={this.props.localeStrings.btnBack}
+                                    />
                                     <Button
                                         primary
                                         onClick={() => this.updateConfiguration()}
-                                        className='team-name-config-save-btn'
+                                        className='admin-settings-save-btn'
                                         title={this.props.localeStrings.btnSaveChanges}
-                                    >
-                                        <label className="team-name-config-save-btn-label">{this.props.localeStrings.btnSaveChanges}</label>
-                                    </Button>
+                                        content={this.props.localeStrings.btnSaveChanges}
+                                    />
                                 </div>
                             </div>
                         </div>
