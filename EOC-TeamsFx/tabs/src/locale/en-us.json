@@ -474,5 +474,11 @@
    "ChannelNameRegexError": "Channel name cannot contain the characters ~ # % & * { } + / \\ : < > .. ? | ' \"",
    "_ChannelNameRegexError.comment": "This string is displayed as error message",
    "roleUserInfoTooltipContent": "Assign users to their respective role groups here. To assign a role lead for the selected role enter that person in the role lead field.",
-   "_roleUserInfoTooltipContent.comment": "This string is displayed as Tooltip"
+   "_roleUserInfoTooltipContent.comment": "This string is displayed as Tooltip",
+   "downloadBtnLabel": "Download",
+   "_downloadBtnLabel.comment": "This string is displayed as button label",
+   "downloadPDFLinkTooltipContent": "Download as PDF",
+   "_downloadPDFLinkTooltipContent.comment": "This string is displayed as Tooltip",
+   "modifiedOn": "Modified On",
+   "_modifiedOn.comment": "This string is displayed as label for a grid"
 }

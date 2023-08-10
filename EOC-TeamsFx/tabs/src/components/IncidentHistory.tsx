@@ -15,6 +15,8 @@ import * as constants from "../common/Constants";
 import * as graphConfig from '../common/graphConfig';
 import siteConfig from '../config/siteConfig.json';
 import "../scss/IncidentHistory.module.scss";
+import { PDFDownloadLink, Page, Text, View, Document } from '@react-pdf/renderer';
+import { styles as PDFStyles } from '../assets/styles/IncidentHistoryPDFStyles';
 
 //Creates table control with fixed coloumns feature using react table control.
 const ReactTableFixedColumns = withFixedColumns(ReactTable);
@@ -36,6 +38,7 @@ export interface IIncidentHistoryState {
     isDesktop: boolean;
     showRoleLeads: boolean;
     roleLeadDetails: any;
+    versionHistoryPDFData: any
 }
 export interface IIncidentHistoryProps {
     localeStrings: any;
@@ -71,7 +74,8 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             gridData: [],
             isDesktop: true,
             showRoleLeads: false,
-            roleLeadDetails: []
+            roleLeadDetails: [],
+            versionHistoryPDFData: []
         }
 
         this.getVersions = this.getVersions.bind(this);
@@ -98,6 +102,9 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         window.addEventListener("resize", this.resize.bind(this));
         this.resize();
         this.getVersions();
+        //set title attribute to pdf download link
+        const pdfLink = document.getElementById("incident-history-download-link")?.getElementsByClassName("download-pdf")[0];
+        pdfLink?.setAttribute("title", this.props.localeStrings.downloadPDFLinkTooltipContent);
     }
 
     //Component life cycle componentDidUpdate method.
@@ -108,6 +115,14 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                 (_idx) => this.itemHeight,
                 ScrollToMode.top
             );
+        }
+        //Format version data for pdf
+        if (prevState.incidentVersionData !== this.state.incidentVersionData && this.state.incidentVersionData.length > 0) {
+            const versionHistoryArray: any = [];
+            this.state.incidentVersionData.forEach((versionData: any, index: any) => {
+                versionHistoryArray.push(this.formatVersionData(versionData, index, true));
+            });
+            this.setState({ versionHistoryPDFData: versionHistoryArray });
         }
     }
 
@@ -138,7 +153,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     }
 
     //Format version data when on click of each version in the list view.
-    private formatVersionData(versionData: any, index: any) {
+    private formatVersionData(versionData: any, index: any, forPDf = false) {
         try {
             let diff = require('deep-diff');
             let currentVersionData = versionData;
@@ -170,11 +185,20 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     });
                 }
             });
-
-            this.setState({
-                selectedItem: index,
-                versionDetails: formattedIncidentsData
-            });
+            if (forPDf) {
+                return {
+                    modifiedOn: versionData.modifiedDate,
+                    modifiedBy: versionData.lastModifiedBy,
+                    versionData: formattedIncidentsData
+                };
+            }
+            else {
+                this.setState({
+                    selectedItem: index,
+                    versionDetails: formattedIncidentsData
+                });
+                return null;
+            }
         } catch (error) {
             console.error(
                 constants.errorLogPrefix + "IncidentHistory_Format_Version_Data\n",
@@ -522,6 +546,8 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         ] : [];
 
         const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
+        const pdfFileName = this.props.localeStrings.incidentHistory + " - " + this.props.incidentId + " - " + this.state.incidentVersionData[this.state.incidentVersionData.length - 1]?.incidentName;
+
         return (
             <>
                 <div className="incident-history">
@@ -576,11 +602,20 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         <img
                                             src={require("../assets/Images/TableViewIcon.svg").default}
                                             alt={this.props.localeStrings.tableView}
-                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} 
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`}
                                         />
-                                      
+
                                         <span>{this.props.localeStrings.tableView}</span>
                                     </label>
+                                    <div id="incident-history-download-link">
+                                        <PDFDownloadLink
+                                            document={this.formatIncidentHistoryPDF(pdfFileName, this.state.versionHistoryPDFData)}
+                                            fileName={`${pdfFileName}.pdf`}
+                                            className="download-pdf"
+                                        >
+                                            {({ blob, url, loading, error }: any) => this.downloadIncidentHistoryPDF(loading, error)}
+                                        </PDFDownloadLink>
+                                    </div>
                                 </div>
                             </div>
                             {this.state.isListView ?
@@ -679,7 +714,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                             }}
                                             onCancel={(e) => this.hideRoles()}
                                             open={this.state.showRoles || this.state.showRoleLeads}
-                                            className={`view-roles-popup${this.props.currentThemeName === constants.darkMode ? " view-roles-popup-dark" : `${this.props.currentThemeName === constants.contrastMode ? " view-roles-popup-contrast":""}`}`}
+                                            className={`view-roles-popup${this.props.currentThemeName === constants.darkMode ? " view-roles-popup-dark" : this.props.currentThemeName === constants.contrastMode ? " view-roles-popup-contrast" : ""}}`}
                                         />
                                         : null}
                                 </div>
@@ -687,6 +722,73 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         </div>
                     </div>
                 </div>
+            </>
+        );
+    }
+
+    //Format Incident History PDF Document
+    private formatIncidentHistoryPDF(incident: string, versionHistoryPDFData: any): JSX.Element {
+        return (
+            <Document>
+                <Page style={PDFStyles.body} size={'A4'}>
+                    <Text style={PDFStyles.mainHeading}>{incident}</Text>
+                    {versionHistoryPDFData.map((item: any) => {
+                        return (
+                            item?.versionData.length > 0 ?
+                                <View>
+                                    <View style={PDFStyles.tableHeading}>
+                                        <View><Text>{this.props.localeStrings.modifiedOn}: {item.modifiedOn}</Text></View>
+                                        <View><Text>{this.props.localeStrings.modifiedBy}: {item.modifiedBy}</Text></View>
+                                    </View>
+                                    <View style={PDFStyles.table} key={item.modifiedOn + "-" + item.modifiedBy}>
+                                        <View style={{ ...PDFStyles.tableRow, ...PDFStyles.tableHeaderRow }}>
+                                            <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell1, ...PDFStyles.tableHeaderCell }}>
+                                                <Text style={PDFStyles.tableCellText}>{this.props.localeStrings.field}</Text>
+                                            </View>
+                                            <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell2, ...PDFStyles.tableHeaderCell }}>
+                                                <Text style={PDFStyles.tableCellText}>{this.props.localeStrings.new}</Text>
+                                            </View>
+                                            <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell3, ...PDFStyles.tableHeaderCell }}>
+                                                <Text style={PDFStyles.tableCellText}>{this.props.localeStrings.old}</Text>
+                                            </View>
+                                        </View>
+                                        {item.versionData.map((versionDataItem: any) => {
+                                            return (
+                                                <View style={PDFStyles.tableRow} key={item.version + "-" + versionDataItem.field} wrap={false} >
+                                                    <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell1 }}>
+                                                        <Text style={PDFStyles.tableCellText}>{versionDataItem.field}</Text>
+                                                    </View>
+                                                    <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell2 }}>
+                                                        <Text style={PDFStyles.tableCellText}>{versionDataItem.newValue}</Text>
+                                                    </View>
+                                                    <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell3 }}>
+                                                        <Text style={PDFStyles.tableCellText}>{versionDataItem.oldValue}</Text>
+                                                    </View>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
+                                </View> : <></>
+                        );
+                    })}
+
+                    <Text style={PDFStyles.pageNumbers} render={({ pageNumber, totalPages }) => (
+                        `${pageNumber} / ${totalPages}`
+                    )} fixed />
+                </Page>
+            </Document>
+        );
+    }
+
+    //Render download button content based on loading or error state.
+    private downloadIncidentHistoryPDF(loading: any, error: any): JSX.Element {
+        if (error) {
+            console.error("pdf generation failed", error);
+        }
+        return (
+            <>
+                <img src={require("../assets/Images/Pdf.svg").default} alt="pdf-icon" className={`pdf-icon ${this.props.currentThemeName}-icon`} />
+                <span className="download-text">{loading ? this.props.localeStrings.loadingLabel : this.props.localeStrings.downloadBtnLabel + " PDF"}</span>
             </>
         );
     }

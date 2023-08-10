@@ -237,7 +237,10 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "Channel name cannot start with an underscore (_) or a period (.)",
                 channelNameLastLetterRegexError: "Channel name cannot end with a period (.)",
                 ChannelNameRegexError: "Channel name cannot contain the characters ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "Assign users to their respective role groups here. To assign a role lead for the selected role enter that person in the role lead field."
+                roleUserInfoTooltipContent: "Assign users to their respective role groups here. To assign a role lead for the selected role enter that person in the role lead field.",
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "ar-sa": {
                 btnLogin: "تسجيل الدخول",
@@ -477,7 +480,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "لا يمكن أن يبدأ اسم القناة بتسطير سفلي (_) أو بنقطة (.)",
                 channelNameLastLetterRegexError: "لا يمكن أن ينتهي اسم القناة بنقطة (.)",
                 ChannelNameRegexError: "لا يمكن أن يحتوي اسم القناة على الأحرف ~ # ٪ & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "قم بتعيين المستخدمين إلى مجموعات أدوارهم الخاصة هنا. لتعيين دور يؤدي إلى الدور المحدد، أدخل هذا الشخص في حقل الدور المتوقع."
+                roleUserInfoTooltipContent: "قم بتعيين المستخدمين إلى مجموعات أدوارهم الخاصة هنا. لتعيين دور يؤدي إلى الدور المحدد، أدخل هذا الشخص في حقل الدور المتوقع.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "de-de": {
                 btnLogin: "Anmelden",
@@ -717,7 +724,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "Kanalname darf nicht mit einem Unterstrich (_) oder einem Punkt (.) beginnen.",
                 channelNameLastLetterRegexError: "Kanalname darf nicht mit einem Punkt (.) enden.",
                 ChannelNameRegexError: "Der Kanalname darf die Zeichen ~ # % & * { } + / \\ : < > .. ? | ' \" nicht enthalten.",
-                roleUserInfoTooltipContent: "Weisen Sie hier Benutzer ihren jeweiligen Rollengruppen zu. Um einen Rollenleiter für die ausgewählte Rolle zuzuweisen, geben Sie diese Person in das Feld Rollenleiter ein."
+                roleUserInfoTooltipContent: "Weisen Sie hier Benutzer ihren jeweiligen Rollengruppen zu. Um einen Rollenleiter für die ausgewählte Rolle zuzuweisen, geben Sie diese Person in das Feld Rollenleiter ein.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "es-es": {
                 btnLogin: "Iniciar sesión",
@@ -957,7 +968,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "El nombre del canal no puede empezar por un guion bajo (_) o un punto (.)",
                 channelNameLastLetterRegexError: "El nombre del canal no puede terminar con un punto (.)",
                 ChannelNameRegexError: "El nombre del canal no puede contener los caracteres ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "Asigne los usuarios a sus respectivos grupos de roles aquí. Para asignar un cliente potencial de rol para el rol seleccionado, escriba esa persona en el campo de cliente potencial de rol."
+                roleUserInfoTooltipContent: "Asigne los usuarios a sus respectivos grupos de roles aquí. Para asignar un cliente potencial de rol para el rol seleccionado, escriba esa persona en el campo de cliente potencial de rol.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "fr-fr": {
                 btnLogin: "Connexion",
@@ -1197,7 +1212,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "Le nom du canal ne doit pas commencer par un trait de soulignement (_) ni par un point (.)",
                 channelNameLastLetterRegexError: "Le nom du canal ne doit pas terminer par un point (.)",
                 ChannelNameRegexError: "Le nom du canal ne peut pas contenir les caractères ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "Attribuez des utilisateurs à leurs groupes de rôles respectifs ici. Pour attribuer un prospect de rôle pour le rôle sélectionné, entrez cette personne dans le champ du prospect de rôle."
+                roleUserInfoTooltipContent: "Attribuez des utilisateurs à leurs groupes de rôles respectifs ici. Pour attribuer un prospect de rôle pour le rôle sélectionné, entrez cette personne dans le champ du prospect de rôle.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "he-il": {
                 btnLogin: "היכנס",
@@ -1437,7 +1456,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "אין אפשרות להתחיל שם הערוץ עם קו תחתון (_) או נקודה (.)",
                 channelNameLastLetterRegexError: "שם הערוץ לא יכול להסתיים בנקודה (.)",
                 ChannelNameRegexError: "שם ערוץ אינו יכול להכיל את התווים ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "הקצה כאן משתמשים לקבוצות התפקידים המתאימות שלהם. כדי להקצות הפניה לתפקיד שנבחר, הזן אדם זה בשדה ההפניה של התפקיד."
+                roleUserInfoTooltipContent: "הקצה כאן משתמשים לקבוצות התפקידים המתאימות שלהם. כדי להקצות הפניה לתפקיד שנבחר, הזן אדם זה בשדה ההפניה של התפקיד.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "ja-jp": {
                 btnLogin: "ログイン",
@@ -1677,7 +1700,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "チャネル名の先頭にアンダー スコア (_) やピリオド (.) は使用できません",
                 channelNameLastLetterRegexError: "チャネル名の最後にピリオド (.) は使用できません",
                 ChannelNameRegexError: "チャネル名に文字 ~ # % & * { } + / \\ : < > .. ? | ' \" チャネル名に文字",
-                roleUserInfoTooltipContent: "ここで、ユーザーをそれぞれのロール グループに割り当てます。選択したロールにロール リーダーを割り当てるには、そのユーザーをロール リーダー フィールドに入力します。"
+                roleUserInfoTooltipContent: "ここで、ユーザーをそれぞれのロール グループに割り当てます。選択したロールにロール リーダーを割り当てるには、そのユーザーをロール リーダー フィールドに入力します。",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "ko-kr": {
                 btnLogin: "로그인",
@@ -1917,7 +1944,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "채널 이름은 밑줄(_) 또는 마침표(.)로 시작할 수 없습니다.",
                 channelNameLastLetterRegexError: "채널 이름은 마침표(.)로 끝날 수 없습니다.",
                 ChannelNameRegexError: "채널 이름에는 ~ # % & * { } + / \\ : < > .. ? | ' \" 문자를 사용할 수 없습니다.",
-                roleUserInfoTooltipContent: "여기에서 해당 역할 그룹에 사용자를 할당합니다. 선택한 역할에 대한 역할 리더를 할당하려면 역할 리더 필드에 해당 사용자를 입력하세요."
+                roleUserInfoTooltipContent: "여기에서 해당 역할 그룹에 사용자를 할당합니다. 선택한 역할에 대한 역할 리더를 할당하려면 역할 리더 필드에 해당 사용자를 입력하세요.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "pt-br": {
                 btnLogin: "Logon",
@@ -2157,7 +2188,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "O nome do canal não pode começar com sublinhado (_) ou ponto (.)",
                 channelNameLastLetterRegexError: "O nome do canal não pode terminar com ponto (.)",
                 ChannelNameRegexError: "O nome do canal não pode conter os caracteres ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "Atribua usuários a seus respectivos grupos de funções aqui. Para atribuir um líder de função para a função selecionada, insira essa pessoa no campo de líder de função."
+                roleUserInfoTooltipContent: "Atribua usuários a seus respectivos grupos de funções aqui. Para atribuir um líder de função para a função selecionada, insira essa pessoa no campo de líder de função.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "ru-ru": {
                 btnLogin: "Вход",
@@ -2397,7 +2432,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "Имя канала не может начинаться со знака подчеркивания (_) или точки (.)",
                 channelNameLastLetterRegexError: "Имя канала не может заканчиваться точкой (.)",
                 ChannelNameRegexError: "Имя канала не может содержать символы ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "Назначьте здесь пользователей соответствующим группам ролей. Чтобы назначить руководителя для выбранной роли, введите этого пользователя в поле руководителя роли."
+                roleUserInfoTooltipContent: "Назначьте здесь пользователей соответствующим группам ролей. Чтобы назначить руководителя для выбранной роли, введите этого пользователя в поле руководителя роли.",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "zh-cn": {
                 btnLogin: "登录",
@@ -2637,7 +2676,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "频道名称不能以下划线 (_) 或句点 (.) 开头",
                 channelNameLastLetterRegexError: "频道名称不能以句点 (.) 结尾",
                 ChannelNameRegexError: "通道名称不能包含字符 ~ # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "在此处将用户分配到其各自的角色组。若要为所选角色分配角色主管，请在角色主管字段中输入该人员。"
+                roleUserInfoTooltipContent: "在此处将用户分配到其各自的角色组。若要为所选角色分配角色主管，请在角色主管字段中输入该人员。",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         },
         "zh-tw": {
                 btnLogin: "登入",
@@ -2877,7 +2920,11 @@ const localizedStrings = {
                 channelNameStartLetterRegexError: "頻道名稱的開頭不能是底線 (_) 或英文句點 (.)",
                 channelNameLastLetterRegexError: "頻道名稱的結尾不能是英文句點 (.)",
                 ChannelNameRegexError: "頻道名稱不可包含以下字元: # % & * { } + / \\ : < > .. ? | ' \"",
-                roleUserInfoTooltipContent: "在這裡將使用者指派給各自的角色群組。若要為選取的角色指派角色潛在客戶，請在角色潛在客戶欄位中輸入該人員。"
+                roleUserInfoTooltipContent: "在這裡將使用者指派給各自的角色群組。若要為選取的角色指派角色潛在客戶，請在角色潛在客戶欄位中輸入該人員。",
+
+                downloadBtnLabel: "Download",
+                downloadPDFLinkTooltipContent: "Download as PDF",
+                modifiedOn: "Modified On"
         }
 }
 export { localizedStrings };
