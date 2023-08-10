@@ -1,6 +1,6 @@
 import {
     Button, ChevronStartIcon, CloseIcon, Flex,
-    FormDropdown, FormInput, FormTextArea, Loader
+    FormDropdown, FormInput, FormTextArea, Loader, Checkbox as NorthstarCheckbox
 } from "@fluentui/react-northstar";
 import { LocalizationHelper, PeoplePicker, PersonType, UserType } from '@microsoft/mgt-react';
 import { Client } from "@microsoft/microsoft-graph-client";
@@ -9,7 +9,6 @@ import moment from "moment";
 import * as React from "react";
 import Col from "react-bootstrap/Col";
 import Row from "react-bootstrap/Row";
-import Container from 'react-bootstrap/Container';
 import { v4 as uuidv4 } from "uuid";
 import CommonService, { IListItem } from "../common/CommonService";
 import * as constants from '../common/Constants';
@@ -29,9 +28,6 @@ import { Checkbox } from '@fluentui/react/lib/Checkbox';
 import { Toggle } from '@fluentui/react/lib/Toggle';
 import { AddIcon } from '@fluentui/react-icons-northstar';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { DatePicker, IComboBox, TimePicker, ComboBox } from "@fluentui/react";
-import { PeopleEdit24Regular, Delete24Regular, Dismiss24Regular, Save24Regular, PeopleCheckmark24Regular, CloudLink24Regular } from "@fluentui/react-icons";
-import { Checkbox as Fluent9CheckBox } from "@fluentui/react-components"
 
 const calloutProps = { gapSpace: 0 };
 
@@ -51,7 +47,6 @@ export interface IIncidentDetailsProps {
     appInsights: ApplicationInsights;
     userPrincipalName: any;
     tenantID: any;
-    currentThemeName: string;
 }
 
 export interface IIncidentDetailsState {
@@ -99,7 +94,6 @@ export interface IIncidentDetailsState {
     secIncCommanderLeadHasRegexError: boolean;
     secIncCommanderUserInEditModeHasRegexError: boolean;
     secIncCommanderLeadInEditModeHasRegexError: boolean;
-    roleAddSuccessMessage: string;
 }
 
 // sets the initial values for required fields validation object
@@ -119,22 +113,10 @@ const getInputValidationInitialState = (): IInputValidationStates => {
 };
 
 class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncidentDetailsState> {
-
-    //ref variables declaration to create unique reference for DOM element and after validation focus set. 
-    private incidentName: any;
-    private incidentLocation: any;
-    private incidentType: any;
-    private incidentDescription: any;
-    private incidentStartDateTime: any;
-    private incidentCommandar: any;
-    private searchUser: any;
-    private searchUserEditMode: any;
-
     private incCommanderRef: React.RefObject<any>;
     private normalSearchUserRef: React.RefObject<any>;
     private normalSearchLeadRef: React.RefObject<any>;
-    private incTypeRef: any;
-
+    private incTypeRef: React.RefObject<HTMLDivElement>;
 
     constructor(props: IIncidentDetailsProps) {
         super(props);
@@ -186,8 +168,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             secIncCommanderUserHasRegexError: false,
             secIncCommanderLeadHasRegexError: false,
             secIncCommanderUserInEditModeHasRegexError: false,
-            secIncCommanderLeadInEditModeHasRegexError: false,
-            roleAddSuccessMessage: ""
+            secIncCommanderLeadInEditModeHasRegexError: false
         };
         this.onRoleChange = this.onRoleChange.bind(this);
         this.onTextInputChange = this.onTextInputChange.bind(this);
@@ -205,16 +186,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 }
             }
         }
-        // initialize ref object to assign unique reference for DOM element.
-        // to set focus after validation
-        this.incidentName = React.createRef();
-        this.incidentCommandar = React.createRef();
-        this.incidentDescription = React.createRef();
-        this.incidentType = React.createRef();
-        this.incidentStartDateTime = React.createRef();
-        this.incidentLocation = React.createRef();
-        this.searchUser = React.createRef();
-        this.searchUserEditMode = React.createRef();
     }
 
     private dataService = new CommonService();
@@ -240,8 +211,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         if (!this.state.isEditMode) {
             this.getIncidentTypeDefaultData();
             this.onToggleAdditionChannels(true);
-            //set the current date and time for the date and time picker variables
-            this.setDefaultDateTime();
         }
     }
 
@@ -347,37 +316,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         if (prevState.selectedLead !== this.state.selectedLead && this.state.selectedLead.length === 0) {
             this.updatePeoplePickerAttributes(this.normalSearchLeadRef.current, this.state.selectedLead.length > 0);
         }
-        //set the state variable with start date and time when the date or time changes in the picker controls        
-        if (prevState.incDetailsItem.startDate !== this.state.incDetailsItem.startDate ||
-            prevState.incDetailsItem.startTime !== this.state.incDetailsItem.startTime) {
-
-            this.formatStartDateTime(this.state.incDetailsItem.startDate, this.state.incDetailsItem.startTime);
-        }
-    }
-
-    //set the state variables with default date and time
-    private setDefaultDateTime() {
-        let incInfo = { ...this.state.incDetailsItem };
-        incInfo["startTime"] = new Date();
-        incInfo["startDate"] = new Date();
-        this.setState({ incDetailsItem: incInfo });
-    }
-
-    //set the state variable with date and time in the UTC format
-    private formatStartDateTime(startDate: Date, startTime: Date) {
-        let incInfo = { ...this.state.incDetailsItem };
-        let formattedDate = moment(startDate).format("YYYY-MM-DD");
-        let formattedTime;
-
-        if (startTime && startTime.toString() !== "Invalid Date") {
-            formattedTime = moment(startTime).format("HH:mm:ss[Z]");
-            incInfo["startDateTime"] = formattedDate + "T" + formattedTime;
-            this.setState({ incDetailsItem: incInfo });
-        }
-        else {
-            incInfo["startDateTime"] = "";
-            this.setState({ incDetailsItem: incInfo });
-        }
     }
 
     // removing event listener for screen resizing on component unmount
@@ -411,15 +349,14 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     optionsArr.typeOptions = typeOptions.sort();
                     optionsArr.roleOptions = roleOptions.sort();
 
-                    const activeStatus = optionsArr.statusOptions.find((statusObj: IIncidentStatus) =>
-                        statusObj.status === constants.active);
-
+                    const activeStatusId = optionsArr.statusOptions.find((statusObj: IIncidentStatus) =>
+                        statusObj.status === constants.active).id;
                     let incInfo: IncidentEntity = { ...this.state.incDetailsItem };
                     let inputValidationObj = this.state.inputValidation;
                     if (incInfo) {
                         //default the status to Active when the Status dropdown is blank
-                        if (incInfo["incidentStatus"] === undefined && activeStatus !== undefined)
-                            incInfo["incidentStatus"] = { status: constants.active, id: activeStatus.id };
+                        if (incInfo["incidentStatus"] === undefined)
+                            incInfo["incidentStatus"] = { status: constants.active, id: activeStatusId };
                         inputValidationObj.incidentStatusHasError = false;
                     }
 
@@ -629,6 +566,16 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         inputValidation: inputValidationObj
                     })
                     break;
+                case "startDateTime":
+                    incInfo[key] = event.target.value;
+                    if (event.target.value.length > 0) {
+                        inputValidationObj.incidentStartDateTimeHasError = false;
+                    }
+                    else {
+                        inputValidationObj.incidentStartDateTimeHasError = true;
+                    }
+                    this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj })
+                    break;
                 case "location":
                     incInfo[key] = event.target.value;
                     if (event.target.value.length > 0) {
@@ -697,7 +644,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         await this.getDropdownOptions();
 
         //check if we have data for selected role
-        const filteredincidentTypeDefaultData = this.state.incidentTypeRoleDefaultData.filter((e: any) => e.incidentType === selectedValue.key);
+        const filteredincidentTypeDefaultData = this.state.incidentTypeRoleDefaultData.filter((e: any) => e.incidentType === selectedValue.value);
         const rolesObj: any[] = [];
         let defaultAdditionalChannels: IAdditionalTeamChannels[] = [];
         const isRoleInEditMode: boolean[] = [];
@@ -810,7 +757,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         if (incInfo) {
             let incInfo = { ...this.state.incDetailsItem };
             if (incInfo) {
-                incInfo["incidentType"] = selectedValue.key;
+                incInfo["incidentType"] = selectedValue.value;
                 incInfo["selectedRole"] = "";
                 let inputValidationObj = this.state.inputValidation;
                 inputValidationObj.incidentTypeHasError = false;
@@ -837,7 +784,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         if (incInfo) {
             let incInfo = { ...this.state.incDetailsItem };
             if (incInfo) {
-                incInfo["incidentStatus"] = { status: selectedValue.text, id: selectedValue.key };
+                const selectedStatusId = this.state.dropdownOptions.statusOptions.find((statusObj: IIncidentStatus) =>
+                    statusObj.status === selectedValue.value).id;
+                incInfo["incidentStatus"] = { status: selectedValue.value, id: selectedStatusId };
                 let inputValidationObj = this.state.inputValidation;
                 inputValidationObj.incidentStatusHasError = false;
                 this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj })
@@ -847,9 +796,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
     // on role dropdown value change
     private onRoleChange = (_event: any, selectedRole: any) => {
-        this.setState({
-            roleAddSuccessMessage: ""
-        })
         //check if we have data for selected role
         const filteredRoleData = this.state.roleDefaultData.filter((e: any) => e.role === selectedRole.value);
         let incInfo = this.state.incDetailsItem;
@@ -1239,9 +1185,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 })
             }
         }
-        this.setState({
-            roleAddSuccessMessage: constants.addRoleMessage
-        })
     }
 
     // change add role assignment button disable state
@@ -1639,7 +1582,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 Description: incidentInfo.incidentDesc,
                                 IncidentType: incidentInfo.incidentType,
                                 StatusLookupId: incidentInfo.incidentStatus.id,
-                                StartDateTime: incidentInfo.startDateTime,
+                                StartDateTime: incidentInfo.startDateTime + ":00Z",
                                 Location: incidentInfo.location,
                                 IncidentName: incidentInfo.incidentName,
                                 RoleAssignment: roleAssignment.trim(),
@@ -2028,30 +1971,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             });
             reqFieldValidationSuccess = false;
         }
-        this.setFocusAfterValidation(inputValidationObj);
         return reqFieldValidationSuccess;
     }
-
-    // to set the focus on form after validation
-    // to set the focus on non-filled required field after validation 
-    private setFocusAfterValidation = (inputValidationObj: any) => {
-        if (inputValidationObj.incidentNameHasError) {
-            this.incidentName.current?.focus();
-        } else if (inputValidationObj.incidentTypeHasError) {
-            this.incidentType.current?.querySelector("input").focus();
-        } else if (inputValidationObj.incidentStartDateTimeHasError) {
-            this.incidentStartDateTime.current?.querySelector("input").focus();
-        } else if (inputValidationObj.incidentCommandarHasError) {
-            const shadow = this.incidentCommandar.current?.shadowRoot;
-            let childInput: HTMLElement = shadow.getElementById("people-picker-input");
-            childInput.focus();
-        } else if (inputValidationObj.incidentLocationHasError) {
-            this.incidentLocation.current?.focus();
-        } else if (inputValidationObj.incidentDescriptionHasError) {
-            this.incidentDescription.current?.focus();
-        }
-    }
-
 
     //delay the operation by adding timeout
     private timeout = (delay: number): Promise<any> => {
@@ -3709,176 +3630,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         );
     }
 
-    //format the date to show in the date picker
-    private onFormatDate = (date?: Date): string => {
-        let formattedDate = moment(date).format("MMM DD YYYY");
-        return formattedDate;
-    }
-
-    //update the state variable whenever the date is changed in the date picker control
-    private onChangeStartDate = (date: Date | null | undefined) => {
-        if (date) {
-            let incInfo = { ...this.state.incDetailsItem };
-            let inputValidationObj = this.state.inputValidation;
-            incInfo["startDate"] = date;
-            this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj });
-        }
-    }
-
-    //update the state variable whenever the time is changed in the time picker control
-    private onChangeStartTime = (_ev: React.FormEvent<IComboBox>, time: Date) => {
-        let incInfo = { ...this.state.incDetailsItem };
-        let inputValidationObj = this.state.inputValidation;
-        incInfo["startTime"] = time;
-        if (time?.toString() === "Invalid Date" || null || undefined || "") {
-            inputValidationObj.incidentStartDateTimeHasError = true;
-        }
-        else {
-            inputValidationObj.incidentStartDateTimeHasError = false;
-        }
-        this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj });
-    }
-
-    //adding key for all incident types
-    private options = (optionArray: any) => {
-        let myOptions: { key: any; text: any; }[] = [];
-        optionArray.forEach((element: any) => {
-            myOptions.push({ key: element, text: element });
-        });
-        return myOptions;
-    }
-
-    //adding key for all incident status
-    private statusOptions = (optionArray: any) => {
-        let myOptions: { key: any; text: any; }[] = [];
-        optionArray.forEach((element: any) => {
-            myOptions.push({ key: element.id, text: element.status });
-        });
-        return myOptions;
-    }
-
-    //method is called when the menu opens for incident type combo box
-    private onMenuOpen = () => {
-
-        //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        if (navigator.userAgent.match(/iPhone/i)) {
-            const listBoxElement: any = document.getElementById("incident-type-listbox-list")?.children;
-            if (listBoxElement?.length > 0) {
-                for (let i = 0; i < listBoxElement?.length; i++) {
-                    const buttonId = `incident-type-listbox-list${i}`;
-                    const buttonElement: any = document.getElementById(buttonId);
-                    const ariaLabel = `${buttonElement.innerText} ${i + 1} of ${listBoxElement.length}`;
-                    buttonElement?.setAttribute("aria-label", ariaLabel);
-                }
-            }
-        }
-
-    }
-
-    //on menu open, add the ariaLabel attribute to fix the position issue in iOS for accessbility
-    private onStatusMenuOpen = () => {
-
-        //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        if (navigator.userAgent.match(/iPhone/i)) {
-            const listBoxElement: any = document.getElementById("incident-status-listbox-list")?.children;
-            if (listBoxElement?.length > 0) {
-                for (let i = 0; i < listBoxElement?.length; i++) {
-                    const buttonId = `incident-status-listbox-list${i}`;
-                    const buttonElement: any = document.getElementById(buttonId);
-                    const ariaLabel = `${buttonElement.innerText} ${i + 1} of ${listBoxElement.length}`;
-                    buttonElement?.setAttribute("aria-label", ariaLabel);
-                }
-            }
-        }
-
-    }
-
-    //onClick or onKeydown event in Incident Commander field, update the ariaLabel attribute to fix the position issue in iOS for accessbility
-    private setSuggestionsAttributes = () => {
-        //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        setTimeout(() => {
-            if (navigator.userAgent.match(/iPhone/i)) {
-                const shadow = this.incidentCommandar.current?.shadowRoot;
-                let suggestionsListItems: any = shadow?.getElementById("suggestions-list")?.children;
-
-                if (suggestionsListItems?.length > 0 && suggestionsListItems !== "undefined") {
-                    for (let i = 0; i < suggestionsListItems?.length; i++) {
-                        const ariaLabel = suggestionsListItems[i]?.getAttribute("aria-label");
-                        if (!ariaLabel.includes(`${i + 1} of ${suggestionsListItems.length}`)) {
-                            let newAriaLabel = `${ariaLabel} ${i + 1} of ${suggestionsListItems.length}`
-                            suggestionsListItems[i]?.setAttribute("aria-label", newAriaLabel);
-                        }
-                    }
-                }
-                else {
-                    let loadingMessage: any = shadow?.querySelector('.loading-text');
-                    if (loadingMessage) {
-                        this.setSuggestionsAttributes();
-                    }
-                }
-            }
-        }, 1000)
-    }
-
-    //onClick or onKeydown event in Search User field, update the ariaLabel attribute to fix the position issue in iOS for accessbility
-    private setSearchUserAttributes = () => {
-        //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        setTimeout(() => {
-            if (navigator.userAgent.match(/iPhone/i)) {
-                const shadow = this.searchUser.current?.shadowRoot;
-                let suggestionsListItems: any = shadow?.getElementById("suggestions-list")?.children;
-
-                if (suggestionsListItems?.length > 0 && suggestionsListItems !== "undefined") {
-                    for (let i = 0; i < suggestionsListItems?.length; i++) {
-                        const ariaLabel = suggestionsListItems[i]?.getAttribute("aria-label");
-                        if (!ariaLabel.includes(`${i + 1} of ${suggestionsListItems.length}`)) {
-                            let newAriaLabel = `${ariaLabel} ${i + 1} of ${suggestionsListItems.length}`
-                            suggestionsListItems[i]?.setAttribute("aria-label", newAriaLabel);
-                        }
-                    }
-                }
-                else {
-                    let loadingMessage: any = shadow?.querySelector('.loading-text');
-                    if (loadingMessage) {
-                        this.setSuggestionsAttributes();
-                    }
-                }
-            }
-        }, 1000)
-
-    }
-
-    //onClick or onKeydown event in Search User edit mode field, update the ariaLabel attribute to fix the position issue in iOS for accessbility
-    private setSearchUserEditModeAttributes = () => {
-        //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        setTimeout(() => {
-            if (navigator.userAgent.match(/iPhone/i)) {
-                const shadow = this.searchUserEditMode.current?.shadowRoot;
-                let suggestionsListItems: any = shadow?.getElementById("suggestions-list")?.children;
-
-                if (suggestionsListItems?.length > 0 && suggestionsListItems !== "undefined") {
-                    for (let i = 0; i < suggestionsListItems?.length; i++) {
-                        const ariaLabel = suggestionsListItems[i]?.getAttribute("aria-label");
-                        if (!ariaLabel.includes(`${i + 1} of ${suggestionsListItems.length}`)) {
-                            let newAriaLabel = `${ariaLabel} ${i + 1} of ${suggestionsListItems.length}`
-                            suggestionsListItems[i]?.setAttribute("aria-label", newAriaLabel);
-                        }
-                    }
-                }
-                else {
-                    let loadingMessage: any = shadow?.querySelector('.loading-text');
-                    if (loadingMessage) {
-                        this.setSuggestionsAttributes();
-                    }
-                }
-            }
-        }, 1000)
-
-    }
-
     //main render method
     public render() {
-        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
         return (
             <>
                 <div className="incident-details">
@@ -3886,40 +3639,30 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         {this.state.showLoader &&
                             <div className="loader-bg">
                                 <div className="loaderStyle">
-                                    {this.state.loaderMessage === this.props.localeStrings.genericLoaderMessage ?
-                                        <Loader label={this.state.loaderMessage} size="largest" />
-                                        :
-                                        <Loader aria-live="polite" role="alert" label={this.state.loaderMessage} size="largest" />
-                                    }
+                                    <Loader label={this.state.loaderMessage} size="largest" />
                                 </div>
                             </div>
                         }
                         <div style={{ opacity: this.state.formOpacity }}>
                             <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="incident-details-path">
                                 <label>
-                                    <span
-                                        onClick={() => this.props.onBackClick("")}
-                                        onKeyDown={(event) => {
-                                            if (event.key === constants.enterKey)
-                                                this.props.onBackClick("")
-                                        }}
-                                        className="go-back">
+                                    <span onClick={() => this.props.onBackClick("")} className="go-back">
                                         <ChevronStartIcon id="path-back-icon" />
-                                        <span className="back-label" role="button" tabIndex={0} title="Back">{this.props.localeStrings.back}</span>
+                                        <span className="back-label" title="Back">{this.props.localeStrings.back}</span>
                                     </span> &nbsp;&nbsp;
                                     <span className="right-border">|</span>
                                     <span>&nbsp;&nbsp;{this.props.localeStrings.formTitle}</span>
                                 </label>
                             </div>
-                            <div className={`incident-details-form-area${isDarkOrContrastTheme ? " incident-details-form-area-darkcontrast" : ""}`}>
+                            <div className="incident-details-form-area">
                                 <div className="container">
-                                    <h2 aria-live="polite" role="alert"> <div className="incident-form-head-text">
+                                    <div className="incident-form-head-text">
                                         {!this.props.isEditMode ?
                                             <>{this.props.localeStrings.formTitle}</>
                                             :
                                             <>{this.props.localeStrings.formTitleEditMode} - {this.props.incidentData?.incidentId}</>
                                         }
-                                    </div></h2>
+                                    </div>
                                     <Row xs={1} sm={2} md={3}>
                                         <Col md={4} sm={8} xs={12}>
                                             <div className="incident-grid-item">
@@ -3929,63 +3672,63 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     calloutProps={calloutProps}
                                                     hostClassName="tooltip-host-class"
                                                 >
-                                                    <Icon aria-label="Info" tabIndex={0} role="button" iconName="Info" className="incNameInfoIcon" />
+                                                    <Icon aria-label="Info" iconName="Info" className="incNameInfoIcon" />
                                                 </TooltipHost>
                                                 <FormInput
                                                     type="text"
-                                                    ref={this.incidentName}
                                                     placeholder={this.props.localeStrings.phIncidentName}
                                                     fluid={true}
                                                     maxLength={constants.maxCharLengthForSingleLine}
-                                                    aria-label={this.props.localeStrings.fieldIncidentName + constants.requiredAriaLabel}
+                                                    required
                                                     onChange={(evt) => this.onTextInputChange(evt, "incidentName")}
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentName ? this.state.incDetailsItem.incidentName : '') : ''}
                                                     className="incident-details-input-field"
                                                     successIndicator={false}
                                                 />
                                                 {this.state.inputValidation.incidentNameHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentNameRequired}</label>
+                                                    <label className="message-label">{this.props.localeStrings.incidentNameRequired}</label>
                                                 )}
                                                 {this.state.inputRegexValidation.incidentNameHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentNameRegex}</label>
+                                                    <label className="message-label">{this.props.localeStrings.incidentNameRegex}</label>
                                                 )}
                                             </div>
                                             <div className="incident-grid-item" ref={this.incTypeRef}>
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldIncidentType}</label>
                                                 {this.props.isEditMode ?
                                                     <FormDropdown
+                                                        label={{ content: this.props.localeStrings.fieldIncidentType, required: true }}
                                                         placeholder={this.props.localeStrings.phIncidentType}
                                                         fluid={true}
                                                         value={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentType ? this.state.incDetailsItem.incidentType : '') : ''}
                                                         className={"incident-type-dropdown-disabled"}
                                                         disabled={true}
-                                                        aria-label={this.props.localeStrings.fieldIncidentType + constants.requiredAriaLabel}
                                                     />
                                                     :
-                                                    <ComboBox
+                                                    <FormDropdown
+                                                        label={{ content: this.props.localeStrings.fieldIncidentType, required: true }}
                                                         placeholder={this.props.localeStrings.phIncidentType}
-                                                        options={this.state.dropdownOptions["typeOptions"] ? this.options(this.state.dropdownOptions["typeOptions"]) : []}
+                                                        items={this.state.dropdownOptions ? this.state.dropdownOptions["typeOptions"] : []}
+                                                        fluid={true}
+                                                        search
+                                                        clearable={true}
                                                         onChange={this.onIncidentTypeChange}
                                                         className={"incident-type-dropdown"}
-                                                        useComboBoxAsMenuWidth={true}
-                                                        allowFreeInput={true}
-                                                        persistMenu={true}
-                                                        calloutProps={{ directionalHintFixed: true, doNotLayer: true }}
-                                                        ref={this.incidentType}
-                                                        ariaLabel={this.props.localeStrings.fieldIncidentType + constants.requiredAriaLabel}
-                                                        id="incident-type-listbox"
-                                                        onMenuOpen={this.onMenuOpen}
+                                                        onOpenChange={(_: any, data: any) => {
+                                                            if (data.open) {
+                                                                const calloutId: any = this.incTypeRef.current?.getElementsByTagName("ul")[0].getAttribute("id");
+                                                                this.incTypeRef.current?.getElementsByClassName("ui-dropdown__searchinput__wrapper")[0]
+                                                                    .setAttribute("aria-controls", calloutId);
+                                                            }
+                                                        }}
                                                     />
                                                 }
                                                 {this.state.inputValidation.incidentTypeHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentTypeRequired}</label>
+                                                    <label className="message-label">{this.props.localeStrings.incidentTypeRequired}</label>
                                                 )}
                                             </div>
                                             <div className="incident-grid-item">
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldStartDate}</label>
                                                 {(this.props.incidentData && this.props.incidentData.incidentId) ?
                                                     <FormInput
-                                                        aria-label={this.props.localeStrings.fieldStartDate + constants.requiredAriaLabel}
+                                                        label={this.props.localeStrings.fieldStartDate}
                                                         type="text"
                                                         placeholder={this.props.localeStrings.phStartDate}
                                                         fluid={true}
@@ -3995,28 +3738,19 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     />
                                                     :
                                                     <>
-                                                        <div ref={this.incidentStartDateTime} className="incident-startdatetime">
-                                                            <DatePicker
-                                                                value={this.state.incDetailsItem.startDate ? this.state.incDetailsItem.startDate : new Date()}
-                                                                onSelectDate={this.onChangeStartDate}
-                                                                placeholder="Select a date"
-                                                                ariaLabel={constants.startDateAriaLabel + constants.requiredAriaLabel}
-                                                                className="incident-datepicker"
-                                                                formatDate={this.onFormatDate}
-                                                                calloutProps={{ className: `incidentdatepicker-callout${this.props.currentThemeName === constants.darkMode ? " incidentdatepicker-callout-dark" : `${this.props.currentThemeName === constants.contrastMode ? " incidentdatepicker-callout-contrast" : ""}`}` }}
-                                                            />
-                                                            <TimePicker
-                                                                dateAnchor={this.state.incDetailsItem.startDate}
-                                                                value={this.state.incDetailsItem.startTime ? this.state.incDetailsItem.startTime : new Date()}
-                                                                placeholder="Select a time"
-                                                                onChange={this.onChangeStartTime}
-                                                                calloutProps={{ directionalHintFixed: true, doNotLayer: true }}
-                                                                ariaLabel={constants.startTimeAriaLabel + constants.requiredAriaLabel}
-                                                                className="incident-timepicker"
-                                                            />
-                                                        </div>
+                                                        <FormInput
+                                                            label={this.props.localeStrings.fieldStartDate}
+                                                            type="datetime-local"
+                                                            placeholder={this.props.localeStrings.phStartDate}
+                                                            fluid={true}
+                                                            required
+                                                            onChange={(evt) => this.onTextInputChange(evt, "startDateTime")}
+                                                            value={this.state.incDetailsItem ? (this.state.incDetailsItem.startDateTime ? this.state.incDetailsItem.startDateTime : '') : ''}
+                                                            className={this.state.incDetailsItem && this.state.incDetailsItem.startDateTime ? "incident-details-date-field" : "dte-ph"}
+                                                            successIndicator={false}
+                                                        />
                                                         {this.state.inputValidation.incidentStartDateTimeHasError && (
-                                                            <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.startDateRequired}</label>
+                                                            <label className="message-label">{this.props.localeStrings.startDateRequired}</label>
                                                         )}
                                                     </>
                                                 }
@@ -4024,38 +3758,31 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                         </Col>
                                         <Col md={4} sm={8} xs={12}>
                                             <div className="incident-grid-item">
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldIncidentStatus}</label>
-                                                <ComboBox
+                                                <FormDropdown
+                                                    label={{ content: this.props.localeStrings.fieldIncidentStatus, required: true }}
                                                     placeholder={this.props.localeStrings.phIncidentStatus}
-                                                    options={this.state.dropdownOptions["statusOptions"] ? this.statusOptions(this.state.dropdownOptions["statusOptions"]) : []}
-                                                    selectedKey={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentStatus ? this.state.incDetailsItem.incidentStatus.id : "") : ""}
+                                                    items={this.state.dropdownOptions ?
+                                                        this.state.dropdownOptions["statusOptions"].map((statusObj: any) => statusObj.status) : []}
+                                                    fluid={true}
+                                                    value={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentStatus ? this.state.incDetailsItem.incidentStatus.status : '') : ''}
                                                     onChange={this.onIncidentStatusChange}
-                                                    className={"incident-status-dropdown"}
-                                                    useComboBoxAsMenuWidth={true}
-                                                    persistMenu={true}
-                                                    calloutProps={{ directionalHintFixed: true, doNotLayer: true }}
-                                                    ref={this.incidentType}
-                                                    ariaLabel={this.props.localeStrings.fieldIncidentStatus + constants.requiredAriaLabel}
-                                                    id="incident-status-listbox"
-                                                    onMenuOpen={this.onStatusMenuOpen}
+                                                    className={this.state.incDetailsItem && this.state.incDetailsItem.incidentStatus ? "incident-details-dropdown" : "dropdown-placeholder"}
                                                 />
                                                 {this.state.inputValidation.incidentStatusHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.statusRequired}</label>
+                                                    <label className="message-label">{this.props.localeStrings.statusRequired}</label>
                                                 )}
                                             </div>
                                             <div className="incident-grid-item" ref={this.incCommanderRef}>
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldIncidentCommander}</label>
-
+                                                <label className="people-picker-label">{this.props.localeStrings.fieldIncidentCommander}</label>
                                                 <TooltipHost
                                                     content={this.props.localeStrings.infoIncCommander}
                                                     calloutProps={calloutProps}
                                                     hostClassName="tooltip-host-class"
                                                 >
-                                                    <Icon aria-label="Info" tabIndex={0} role="button" iconName="Info" className="incCommanderInfoIcon" />
+                                                    <Icon aria-label="Info" iconName="Info" className="incCommanderInfoIcon" />
                                                 </TooltipHost>
                                                 <PeoplePicker
                                                     title={this.props.localeStrings.fieldIncidentCommander}
-                                                    ariaLabel={this.props.localeStrings.fieldIncidentCommander + constants.requiredAriaLabel}
                                                     selectionMode="single"
                                                     type={PersonType.person}
                                                     userType={UserType.user}
@@ -4063,53 +3790,47 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     placeholder={this.props.localeStrings.phIncidentCommander}
                                                     className="incident-details-people-picker"
                                                     selectedPeople={this.state.selectedIncidentCommander}
-                                                    ref={this.incidentCommandar}
-                                                    onKeyDown={this.setSuggestionsAttributes}
-                                                    onClick={this.setSuggestionsAttributes}
                                                 />
                                                 {this.state.inputValidation.incidentCommandarHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentCommanderRequired}</label>
+                                                    <label className="message-label">{this.props.localeStrings.incidentCommanderRequired}</label>
                                                 )}
                                                 {this.state.incCommanderHasRegexError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.guestUsersNotAllowedAsIncCommanderErrorMsg}</label>
+                                                    <label className="message-label">{this.props.localeStrings.guestUsersNotAllowedAsIncCommanderErrorMsg}</label>
                                                 )}
                                             </div>
                                             <div className="incident-grid-item">
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldLocation}</label>
                                                 <FormInput
-                                                    aria-label={this.props.localeStrings.fieldLocation + constants.requiredAriaLabel}
+                                                    label={this.props.localeStrings.fieldLocation}
                                                     placeholder={this.props.localeStrings.phLocation}
                                                     fluid={true}
                                                     maxLength={constants.maxCharLengthForSingleLine}
+                                                    required
                                                     onChange={(evt) => this.onTextInputChange(evt, "location")}
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.location ? this.state.incDetailsItem.location : '') : ''}
                                                     className="incident-details-input-field"
                                                     successIndicator={false}
-                                                    ref={this.incidentLocation}
                                                 />
                                                 {this.state.inputValidation.incidentLocationHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.locationRequired}</label>
+                                                    <label className="message-label">{this.props.localeStrings.locationRequired}</label>
                                                 )}
                                                 {this.state.inputRegexValidation.incidentLocationHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.locationRegex}</label>
+                                                    <label className="message-label">{this.props.localeStrings.locationRegex}</label>
                                                 )}
                                             </div>
                                         </Col>
                                         <Col md={4} sm={8} xs={12}>
                                             <div className="incident-grid-item">
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldDescription}</label>
                                                 <FormTextArea
-                                                    aria-label={this.props.localeStrings.fieldDescription + constants.requiredAriaLabel}
+                                                    label={{ content: this.props.localeStrings.fieldDescription, required: true }}
                                                     placeholder={this.props.localeStrings.phDescription}
                                                     fluid={true}
                                                     maxLength={constants.maxCharLengthForMultiLine}
                                                     onChange={(evt) => this.onTextInputChange(evt, "incidentDesc")}
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentDesc ? this.state.incDetailsItem.incidentDesc : '') : ''}
                                                     className="incident-details-description-area"
-                                                    ref={this.incidentDescription}
                                                 />
                                                 {this.state.inputValidation.incidentDescriptionHasError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentDescRequired}</label>
+                                                    <label className="message-label">{this.props.localeStrings.incidentDescRequired}</label>
                                                 )}
                                             </div>
                                         </Col>
@@ -4137,8 +3858,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     min={0}
                                                     max={3}
                                                     value={this.state.selectedSeverity}
-                                                    ariaLabel={this.props.localeStrings.fieldSeverity + constants.severity[this.state.selectedSeverity]}
-                                                    thumbActiveClassName="focus-indicator"
+                                                    ariaLabel={this.props.localeStrings.fieldSeverity}
+                                                    thumbClassName={this.state.selectedSeverity === 3 ? "example-thumb critical" : this.state.selectedSeverity === 2 ? "example-thumb high" : this.state.selectedSeverity === 1 ? "example-thumb medium" : "example-thumb"}
                                                     trackClassName="example-track"
                                                     onChange={(index) => this.setState({
                                                         selectedSeverity: index
@@ -4146,16 +3867,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     renderMark={(props: any) => {
                                                         if (props.key < this.state.selectedSeverity) {
                                                             props.className = "example-mark example-mark-completed";
-                                                            props.tabIndex = -1
-                                                        } else if (props.key > this.state.selectedSeverity) {
+                                                        } else if (props.key === this.state.selectedSeverity) {
                                                             props.className = "example-mark example-mark-active";
-                                                            props.tabIndex = -1
                                                         }
-                                                        else if (props.key === this.state.selectedSeverity) {
-                                                            props.className = `example-mark ${constants.severity[props.key]}`;
-                                                            props.tabIndex = 0
-                                                        }
-                                                        return <span aria-label={this.props.localeStrings.fieldSeverity + constants.severity[props.key]} {...props} />;
+                                                        return <span {...props} />;
                                                     }}
                                                 />
                                             </div>
@@ -4163,9 +3878,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                         {this.props.isEditMode &&
                                             <Col md={8} sm={8} xs={12}>
                                                 <div className="incident-grid-item">
-                                                    <label className="FormInput-label">{this.props.localeStrings.fieldReasonForUpdate}</label>
                                                     <FormTextArea
-                                                        aria-label={this.props.localeStrings.fieldReasonForUpdate + constants.requiredAriaLabel}
+                                                        label={{ content: this.props.localeStrings.fieldReasonForUpdate, required: true }}
                                                         placeholder={this.props.localeStrings.phReasonForUpdate}
                                                         fluid={true}
                                                         maxLength={constants.maxCharLengthForMultiLine}
@@ -4173,36 +3887,31 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         className="incident-details-reason-update-area"
                                                     />
                                                     {this.state.inputValidation.incidentReasonForUpdateHasError && (
-                                                        <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.reasonForUpdateRequired}</label>
+                                                        <label className="message-label">{this.props.localeStrings.reasonForUpdateRequired}</label>
                                                     )}
                                                 </div>
                                             </Col>
                                         }
                                     </Row>
-                                    <h2><div className="incident-form-head-text">{this.props.localeStrings.headerRoleAssignment}</div></h2>
+                                    <div className="incident-form-head-text">{this.props.localeStrings.headerRoleAssignment}</div>
                                     <Row xs={1} sm={1} md={2}>
                                         <Col md={4} sm={8} xs={12}>
                                             <div className="incident-grid-item">
-                                                <label className="FormInput-label">{this.props.localeStrings.fieldAdditionalRoles}</label>
                                                 <FormDropdown
-                                                    aria-label={this.props.localeStrings.fieldAdditionalRoles + constants.requiredAriaLabel}
+                                                    label={this.props.localeStrings.fieldAdditionalRoles}
                                                     placeholder={this.props.localeStrings.phRoles}
                                                     items={this.state.dropdownOptions ? this.state.dropdownOptions["roleOptions"] : []}
                                                     fluid={true}
-                                                    autoSize
                                                     onChange={this.onRoleChange}
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.selectedRole ? this.state.incDetailsItem.selectedRole : '') : ''}
-                                                    className={this.state.incDetailsItem && this.state.incDetailsItem.selectedRole ? "select-role-dropdown" : "select-role-placeholder"}
-                                                    id="addRole-dropdown"
-                                                    aria-labelledby="addRole-dropdown"
+                                                    className={this.state.incDetailsItem && this.state.incDetailsItem.selectedRole ? "incident-details-dropdown" : "dropdown-placeholder"}
                                                 />
                                             </div>
                                             {this.state.incDetailsItem.selectedRole && this.state.incDetailsItem.selectedRole.indexOf("New Role") > -1 ?
                                                 <>
                                                     <div className="incident-grid-item">
-                                                        <label className="FormInput-label">{this.props.localeStrings.fieldAddRoleName}</label>
                                                         <FormInput
-                                                            aria-label={this.props.localeStrings.fieldAddRoleName + constants.requiredAriaLabel}
+                                                            label={this.props.localeStrings.fieldAddRoleName}
                                                             placeholder={this.props.localeStrings.phAddRoleName}
                                                             fluid={true}
                                                             maxLength={constants.maxCharLengthForSingleLine}
@@ -4223,7 +3932,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         >
                                                             <img src={require("../assets/Images/AddIcon.svg").default}
                                                                 alt="add"
-                                                                className={`manage-role-btn-icon${this.props.currentThemeName === constants.contrastMode ? " add-icon-contrast" : ""}`}
+                                                                className="manage-role-btn-icon"
                                                             />
                                                             &nbsp;&nbsp;&nbsp;
                                                             <label className="manage-role-btn-label">{this.props.localeStrings.btnCreateRole}</label>
@@ -4233,10 +3942,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 :
                                                 <>
                                                     <div className="incident-grid-item" ref={this.normalSearchUserRef}>
-                                                        <label className="FormInput-label">{this.props.localeStrings.fieldSearchUser}</label>
+                                                        <label className="people-picker-label">{this.props.localeStrings.fieldSearchUser}</label>
                                                         <>{this.iconWithTooltip("info", this.props.localeStrings.roleUserInfoTooltipContent, "role-user-info-icon")}</>
                                                         <PeoplePicker
-                                                            ariaLabel={this.props.localeStrings.fieldSearchUser + constants.requiredAriaLabel}
                                                             selectionMode="multiple"
                                                             type={PersonType.person}
                                                             userType={UserType.user}
@@ -4245,9 +3953,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             className="incident-details-people-picker"
                                                             selectedPeople={this.state.selectedUsers}
                                                             title={this.props.localeStrings.fieldSearchUser}
-                                                            ref={this.searchUser}
-                                                            onKeyDown={this.setSearchUserAttributes}
-                                                            onClick={this.setSearchUserAttributes}
                                                         />
                                                         {this.state.secIncCommanderUserHasRegexError && (
                                                             <label className="message-label">{this.props.localeStrings.guestUsersNotAllowedAsSecIncCommanderErrorMsg}</label>
@@ -4256,7 +3961,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     <div className="incident-grid-item" ref={this.normalSearchLeadRef}>
                                                         <label className="lead-people-picker">{this.props.localeStrings.roleLeadLabel}</label>
                                                         <PeoplePicker
-                                                            ariaLabel={this.props.localeStrings.roleLeadLabel}
                                                             selectionMode="single"
                                                             type={PersonType.person}
                                                             userType={UserType.user}
@@ -4274,7 +3978,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         <Checkbox
                                                             className="role-checkbox"
                                                             label={this.props.localeStrings.roleCheckboxTooltip}
-                                                            ariaLabel={this.props.localeStrings.roleCheckboxTooltip}
                                                             checked={this.state.saveDefaultRoleCheck}
                                                             onChange={(_ev, isChecked) => this.setState({
                                                                 saveDefaultRoleCheck: isChecked
@@ -4290,43 +3993,55 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             fluid={!this.state.isDesktop}
                                                             title={this.props.localeStrings.btnAddUser}>
                                                             <img src={require("../assets/Images/AddIcon.svg").default}
-                                                                alt=""
-                                                                className={`manage-role-btn-icon${this.props.currentThemeName === constants.contrastMode ? " add-icon-contrast" : ""}`}
+                                                                alt="add"
+                                                                className="manage-role-btn-icon"
                                                             />
                                                             &nbsp;&nbsp;&nbsp;
                                                             <label className="manage-role-btn-label">{this.props.localeStrings.btnAddUser}</label>
                                                         </Button>
                                                     </div>
-                                                    <div role="status" className="add-role-message" aria-live="polite">{this.state.roleAddSuccessMessage}</div>
                                                 </>
                                             }
                                         </Col>
                                         <Col md={8} sm={12} xs={12}>
-                                            <Container as="table" className="role-assignment-table">
-                                                <Row as="tr" xs={3} sm={3} md={3} className={`role-grid-thead${isDarkOrContrastTheme ? " table-header-darkcontrast" : ""}`}>
-                                                    <Col as="th" md={3} sm={3} xs={3} key={0}>{this.props.localeStrings.headerRole}</Col>
-                                                    <Col as="th" md={3} sm={3} xs={3} key={1} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
-                                                    <Col as="th" md={3} sm={3} xs={3} key={2} className="thead-border-left">{this.props.localeStrings.leadLabel}</Col>
-                                                    <Col as="th" md={1} sm={1} xs={1} key={3} className="thead-border-left col-center">
-                                                        <PeopleCheckmark24Regular className="role-header-icon" title={this.props.localeStrings.roleCheckboxTooltip} />
+                                            <div className="role-assignment-table">
+                                                <Row className="role-grid-thead" xs={3} sm={3} md={3}>
+                                                    <Col md={3} sm={3} xs={3} key={0}>{this.props.localeStrings.headerRole}</Col>
+                                                    <Col md={3} sm={3} xs={3} key={1} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
+                                                    <Col md={3} sm={3} xs={3} key={2} className="thead-border-left">{this.props.localeStrings.leadLabel}</Col>
+                                                    <Col md={1} sm={1} xs={1} key={3} className="thead-border-left col-center">
+                                                        <img
+                                                            src={require("../assets/Images/AddRole.svg").default}
+                                                            alt="Add Role Icon"
+                                                            className="role-select-head-icon"
+                                                            title={this.props.localeStrings.roleCheckboxTooltip}
+                                                        />
                                                     </Col>
-                                                    <Col as="th" md={1} sm={1} xs={1} key={4} className="thead-border-left col-center">
-                                                        <PeopleEdit24Regular className="role-header-icon" title={this.props.localeStrings.headerEdit} />
+                                                    <Col md={1} sm={1} xs={1} key={4} className="thead-border-left col-center">
+                                                        <img
+                                                            src={require("../assets/Images/ButtonEditIcon.svg").default}
+                                                            alt="edit icon"
+                                                            className="role-edit-head-icon"
+                                                            title={this.props.localeStrings.headerEdit}
+                                                        />
                                                     </Col>
-                                                    <Col as="th" md={1} sm={1} xs={1} key={5} className="thead-border-left col-center">
-                                                        <Delete24Regular title={this.props.localeStrings.headerDelete} className="role-header-icon" />
+                                                    <Col md={1} sm={1} xs={1} key={5} className="thead-border-left col-center">
+                                                        <img
+                                                            src={require("../assets/Images/DeleteBoldIcon.svg").default}
+                                                            alt="Delete Icon"
+                                                            className="role-delete-head-icon"
+                                                            title={this.props.localeStrings.headerDelete}
+                                                        />
                                                     </Col>
                                                 </Row>
                                                 {this.state.roleAssignments.map((item, index) => (
                                                     <>
                                                         {this.state.isRoleInEditMode[index] ?
                                                             <>
-                                                                <Row as="tr" xs={4} sm={4} md={4} key={"edit-" + item.role} className="role-grid-tbody">
-                                                                    <Col as="td" md={10} sm={8} xs={8}>
+                                                                <Row xs={4} sm={4} md={4} key={"edit-" + item.role} className="role-grid-tbody">
+                                                                    <Col md={10} sm={8} xs={8}>
                                                                         <label className="role-grid-tbody-peoplepicker-label"> {this.props.localeStrings.headerUsers}: </label>
                                                                         <PeoplePicker
-                                                                            ariaLabel={this.props.localeStrings.fieldSearchUser}
-                                                                            title={this.props.localeStrings.fieldSearchUser}
                                                                             selectionMode="multiple"
                                                                             type={PersonType.person}
                                                                             userType={UserType.user}
@@ -4334,10 +4049,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                             placeholder={this.props.localeStrings.phSearchUser}
                                                                             className="incident-details-people-picker"
                                                                             selectedPeople={this.state.selectedUsersInEditMode}
-                                                                            tabIndex={0}
-                                                                            ref={this.searchUserEditMode}
-                                                                            onKeyDown={this.setSearchUserEditModeAttributes}
-                                                                            onClick={this.setSearchUserEditModeAttributes}
                                                                         />
                                                                         {this.state.secIncCommanderUserInEditModeHasRegexError && (
                                                                             <>
@@ -4347,8 +4058,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                         )}
                                                                         <label className="role-grid-tbody-peoplepicker-label"> {this.props.localeStrings.leadLabel}: </label>
                                                                         <PeoplePicker
-                                                                            ariaLabel={this.props.localeStrings.roleLeadLabel}
-                                                                            title={this.props.localeStrings.roleLeadLabel}
                                                                             selectionMode="single"
                                                                             type={PersonType.person}
                                                                             userType={UserType.user}
@@ -4356,91 +4065,67 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                             placeholder={this.props.localeStrings.phSearchUser}
                                                                             className="incident-details-people-picker"
                                                                             selectedPeople={this.state.selectedLeadInEditMode}
-                                                                            tabIndex={0}
                                                                         />
                                                                         {this.state.secIncCommanderLeadInEditModeHasRegexError && (
                                                                             <label className="error-message-label">{this.props.localeStrings.guestUsersNotAllowedAsSecIncCommanderErrorMsg}</label>
                                                                         )}
                                                                     </Col>
-                                                                    <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
-                                                                        <Save24Regular aria-label="Save"
-                                                                            className="role-icon"
-                                                                            onClick={(e: any) => this.updateRoleAssignment(index)}
-                                                                            onKeyDown={(event: any) => {
-                                                                                if (event.key === constants.enterKey)
-                                                                                    this.updateRoleAssignment(index)
-                                                                            }}
+                                                                    <Col md={1} sm={2} xs={2} className="editRoleCol">
+                                                                        <Icon
+                                                                            aria-label="Save"
+                                                                            iconName="Save"
+                                                                            className="role-edit-icon"
+                                                                            onClick={(e) => this.updateRoleAssignment(index)}
                                                                             title={this.props.localeStrings.saveIcon}
-                                                                            tabIndex={0}
-                                                                            role="button"
                                                                         />
                                                                     </Col>
-                                                                    <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
-                                                                        <Dismiss24Regular aria-label="Cancel"
-                                                                            className="role-icon"
-                                                                            onClick={(e: any) => this.exitEditModeForRoles(index)}
-                                                                            onKeyDown={(event: any) => {
-                                                                                if (event.key === constants.enterKey)
-                                                                                    this.exitEditModeForRoles(index)
-                                                                            }}
-                                                                            title={this.props.localeStrings.cancelIcon}
-                                                                            tabIndex={0}
-                                                                            role="button"
-                                                                        />
+                                                                    <Col md={1} sm={2} xs={2} className="editRoleCol">
+                                                                        <Icon aria-label="Cancel" iconName="Cancel"
+                                                                            className="role-edit-icon"
+                                                                            onClick={(e) => this.exitEditModeForRoles(index)}
+                                                                            title={this.props.localeStrings.cancelIcon} />
                                                                     </Col>
                                                                 </Row>
                                                             </>
                                                             :
-                                                            <Row as="tr" xs={3} sm={3} md={3} key={"role-table-" + item.role} className="role-grid-tbody">
-                                                                <Col as="td" md={3} sm={3} xs={3}>{item.role}</Col>
-                                                                <Col as="td" md={3} sm={3} xs={3}>{item.userNamesString}</Col>
-                                                                <Col as="td" md={3} sm={3} xs={3}>{item.leadNameString}</Col>
-                                                                <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-checkbox">
+                                                            <Row xs={3} sm={3} md={3} key={"role-table-" + item.role} className="role-grid-tbody">
+                                                                <Col md={3} sm={3} xs={3}>{item.role}</Col>
+                                                                <Col md={3} sm={3} xs={3}>{item.userNamesString}</Col>
+                                                                <Col md={3} sm={3} xs={3}>{item.leadNameString}</Col>
+                                                                <Col md={1} sm={1} xs={1} className="col-center role-body-checkbox">
                                                                     <Checkbox
                                                                         defaultChecked={item.saveDefault}
-                                                                        ariaLabel={this.props.localeStrings.roleCheckboxTooltip}
                                                                         onChange={(ev, isChecked) => this.onChecked(ev, isChecked, index)}
                                                                         title={this.props.localeStrings.selectRoleLabel}
                                                                     />
                                                                 </Col>
-                                                                <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
-                                                                    <PeopleEdit24Regular
+                                                                <Col md={1} sm={1} xs={1} className="col-center role-body-icons">
+                                                                    <img
+                                                                        src={require("../assets/Images/GridEditIcon.svg").default}
+                                                                        alt="Edit Icon"
                                                                         className="role-icon"
-                                                                        onClick={(e: any) => this.editRoleItem(index)}
-                                                                        onKeyDown={(event: any) => {
-                                                                            if (event.key === constants.enterKey)
-                                                                                this.editRoleItem(index)
-                                                                        }}
+                                                                        onClick={(e) => this.editRoleItem(index)}
                                                                         title={this.props.localeStrings.headerEdit}
-                                                                        tabIndex={0}
-                                                                        role="button"
                                                                     />
                                                                 </Col>
-                                                                <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
-                                                                    <Delete24Regular
+                                                                <Col md={1} sm={1} xs={1} className="col-center role-body-icons">
+                                                                    <img
+                                                                        src={require("../assets/Images/DeleteIcon.svg").default}
+                                                                        alt="Delete Icon"
                                                                         className="role-icon"
-                                                                        onClick={(e: any) => this.deleteRoleItem(index)}
-                                                                        onKeyDown={(event: any) => {
-                                                                            if (event.key === constants.enterKey)
-                                                                                this.deleteRoleItem(index)
-                                                                        }}
-
+                                                                        onClick={(e) => this.deleteRoleItem(index)}
                                                                         title={this.props.localeStrings.headerDelete}
-                                                                        tabIndex={0}
-                                                                        role="button"
                                                                     />
                                                                 </Col>
                                                             </Row>
                                                         }
                                                     </>
                                                 ))}
-                                            </Container>
+                                            </div>
                                             {this.state.roleAssignments.length > 0 ?
                                                 <div className="role-assignment-table">
-                                                    <Checkbox
-                                                        className="role-checkbox"
+                                                    <Checkbox className="role-checkbox"
                                                         label={this.props.localeStrings.incidentTypeDefaultRoleCheckboxLabel}
-                                                        ariaLabel={this.props.localeStrings.incidentTypeDefaultRoleCheckboxLabel}
                                                         checked={this.state.saveIncidentTypeDefaultRoleCheck}
                                                         onChange={(_ev, isChecked) => this.setState({ saveIncidentTypeDefaultRoleCheck: isChecked })}
                                                     />
@@ -4542,60 +4227,56 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 />
                                                 {this.state.toggleCloudStorageLocation &&
                                                     <>
-                                                        <div className="cloud-link-fields">
-                                                            <div className="cloud-storage-field">
-                                                                <FormInput
-                                                                    type="text"
-                                                                    placeholder={this.props.localeStrings.cloudStorageFieldPlaceholder}
-                                                                    fluid={true}
-                                                                    onChange={(event: any) => this.onTextInputChange(event, "cloudStorageLink")}
-                                                                    value={this.state.incDetailsItem.cloudStorageLink}
-                                                                    className={this.state.isEditMode ? "incident-details-input-field disabled-input" : "incident-details-input-field"}
-                                                                    successIndicator={false}
-                                                                    title={this.state.incDetailsItem.cloudStorageLink}
-                                                                    disabled={this.state.isEditMode}
-                                                                />
-                                                                <span title={this.props.localeStrings.testCloudStorageLocation} className="cloud-icon-area">
-                                                                    <a
-                                                                        href={this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
-                                                                            new URL(this.state.incDetailsItem.cloudStorageLink).href : "/"}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        className={!this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
-                                                                            "disabled-link" : ""}
-                                                                    >
-                                                                        <CloudLink24Regular
-                                                                            className="cloud-icon"
-                                                                        />
-                                                                    </a>
-                                                                </span>
-                                                            </div>
-
+                                                        <div className="field-with-error">
+                                                            <FormInput
+                                                                type="text"
+                                                                placeholder={this.props.localeStrings.cloudStorageFieldPlaceholder}
+                                                                fluid={true}
+                                                                onChange={(event: any) => this.onTextInputChange(event, "cloudStorageLink")}
+                                                                value={this.state.incDetailsItem.cloudStorageLink}
+                                                                className={this.state.isEditMode ? "incident-details-input-field disabled-input" : "incident-details-input-field"}
+                                                                successIndicator={false}
+                                                                title={this.state.incDetailsItem.cloudStorageLink}
+                                                                disabled={this.state.isEditMode}
+                                                            />
                                                             {this.state.inputRegexValidation.incidentCloudStorageLinkHasError &&
                                                                 <label className="error-message-label">{this.props.localeStrings.cloudStorageFieldRegexMessage}</label>}
                                                             {this.state.inputValidation.cloudStorageLinkHasError &&
                                                                 <label className="error-message-label">{this.props.localeStrings.cloudStorageFieldErrorMessage}</label>
                                                             }
                                                         </div>
-                                                        {!this.state.isEditMode &&
-                                                            <Fluent9CheckBox
-                                                                label={<div className={this.state.isEditMode ? "tgle-btn-label disabled-label" : "tgle-btn-label"}>
-                                                                    {this.props.localeStrings.saveDefaultLabel}
-                                                                    {this.iconWithTooltip(
-                                                                        "Info", //Icon library name
-                                                                        this.props.localeStrings.cloudStorageFieldSaveDefaultTooltipContent,
-                                                                        "tgle-btn-info-icon" //Class name
-                                                                    )}
-                                                                </div>}
-                                                                disabled={this.state.isEditMode}
-                                                                className="assets-save-default-checkbox"
-                                                                onChange={(_: any, checked: any) => this.setState({ saveDefaultCloudStorageLink: checked })}
-                                                            />
-                                                        }
+                                                        <span title={this.props.localeStrings.testCloudStorageLocation}>
+                                                            <a
+                                                                href={this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
+                                                                    new URL(this.state.incDetailsItem.cloudStorageLink).href : "/"}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className={!this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
+                                                                    "disabled-link" : ""}
+                                                            >
+                                                                <img
+                                                                    src={require("../assets/Images/CloudIcon.svg").default}
+                                                                    alt="Cloud Link"
+                                                                    className="cloud-icon"
+                                                                />
+                                                            </a>
+                                                        </span>
+                                                        <NorthstarCheckbox
+                                                            label={<div className={this.state.isEditMode ? "tgle-btn-label disabled-label" : "tgle-btn-label"}>
+                                                                {this.props.localeStrings.saveDefaultLabel}
+                                                                {this.iconWithTooltip(
+                                                                    "Info", //Icon library name
+                                                                    this.props.localeStrings.cloudStorageFieldSaveDefaultTooltipContent,
+                                                                    "tgle-btn-info-icon" //Class name
+                                                                )}
+                                                            </div>}
+                                                            disabled={this.state.isEditMode}
+                                                            className="assets-save-default-checkbox"
+                                                            onChange={(_: any, checked: any) => this.setState({ saveDefaultCloudStorageLink: checked })}
+                                                        />
                                                     </>
                                                 }
                                             </div>
-
                                         </Col>
                                         {!this.state.isEditMode &&
                                             <Col xl={10} lg={12}>
@@ -4634,9 +4315,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                                     className="incident-details-input-field"
                                                                                     successIndicator={false}
                                                                                 />
-                                                                                <Dismiss24Regular
+                                                                                <CloseIcon
                                                                                     className="chnl-remove-icon"
-                                                                                    title={this.props.localeStrings.headerDelete}
+                                                                                    title={this.props.localeStrings.headerDelete} size="large"
                                                                                     onClick={() => this.removeChannelInput(idx)}
                                                                                 />
                                                                             </div>
@@ -4656,7 +4337,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     />
                                                                 }
                                                             </div>
-                                                            <Fluent9CheckBox
+                                                            <NorthstarCheckbox
                                                                 label={<div className="tgle-btn-label">
                                                                     {this.props.localeStrings.saveDefaultLabel}
                                                                     {this.iconWithTooltip(
@@ -4681,7 +4362,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 <Flex hAlign="end" gap="gap.large" wrap={true}>
                                                     <Button
                                                         onClick={() => this.props.onBackClick("")}
-                                                        className="new-incident-back-btn"
+                                                        id="new-incident-back-btn"
                                                         fluid={true}
                                                         title={this.props.localeStrings.btnBack}
                                                     >
@@ -4693,11 +4374,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             primary
                                                             onClick={this.updateIncidentDetails}
                                                             fluid={true}
-                                                            className={`new-incident-create-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
-
+                                                            id="new-incident-create-btn"
                                                             title={this.props.localeStrings.btnUpdateIncident}
                                                         >
-                                                            <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="" /> &nbsp;
+                                                            <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="edit icon" /> &nbsp;
                                                             <label>{this.props.localeStrings.btnUpdateIncident}</label>
                                                         </Button>
                                                         :
@@ -4705,11 +4385,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             primary
                                                             onClick={this.createNewIncident}
                                                             fluid={true}
-                                                            className={`new-incident-create-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
-
+                                                            id="new-incident-create-btn"
                                                             title={this.props.localeStrings.btnCreateIncident}
                                                         >
-                                                            <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="" /> &nbsp;
+                                                            <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="edit icon" /> &nbsp;
                                                             <label>{this.props.localeStrings.btnCreateIncident}</label>
                                                         </Button>
                                                     }

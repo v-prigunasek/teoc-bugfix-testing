@@ -7,8 +7,6 @@ export interface IIncidentEntity {
     incidentType: string;
     incidentDesc: string;
     startDateTime: string;
-    startDate: Date;
-    startTime: Date;
     incidentCommander: UserDetails;
     selectedRole: string;
     assignedUser: UserDetails[];
@@ -29,8 +27,6 @@ export class IncidentEntity implements IIncidentEntity {
     public incidentType!: string;
     public incidentDesc!: string;
     public startDateTime!: string;
-    public startDate!: Date;
-    public startTime!: Date;
     public incidentCommander!: UserDetails;
     public selectedRole!: string;
     public assignedUser!: UserDetails[];

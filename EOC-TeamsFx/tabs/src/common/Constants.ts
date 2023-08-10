@@ -99,21 +99,3 @@ export const plannerBucketTitle = "To do";
 
 //Admin Settigs
 export const adminRole = "Admin";
-
-//Teams theme mode
-export const defaultMode = "default";
-export const darkMode = "dark";
-export const contrastMode = "contrast";
-
-//accessibility
-export const enterKey = "Enter";
-export const tabKey = "Tab";
-export const escapeKey = "Escape";
-export const addRoleMessage = "Selected users are added to the role successfully";
-export const sizePerPageLabel = "Size per page";
-export const sortAscAriaSort = "ascending";
-export const sortDescAriaSort = "descending";
-export const requiredAriaLabel = " required";
-export const sortableAriaLabel = " sortable";
-export const startDateAriaLabel = "Start Date";
-export const startTimeAriaLabel = "Start Time";
