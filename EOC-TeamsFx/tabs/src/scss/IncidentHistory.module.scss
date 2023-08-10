@@ -67,21 +67,22 @@
             }
         }
     }
+
     div[class~="view-roles-popup"] {
         max-height: 420px;
         margin-top: auto;
         margin-bottom: auto;
         min-width: 350px;
         background-color: #ffffff;
-        
-        h2[class~="ui-header"]
-        {       
-            color: #000000;            
-        }
-        button[class~="ui-dialog__headerAction"]
-        {
+
+        h2[class~="ui-header"] {
             color: #000000;
-            &:hover{
+        }
+
+        button[class~="ui-dialog__headerAction"] {
+            color: #000000;
+
+            &:hover {
                 background-color: #e0e0e0;
             }
         }
@@ -156,12 +157,11 @@
 
 
         }
-        button[class~="roles-popup-btn-close"]
-        {
+
+        button[class~="roles-popup-btn-close"] {
             background-color: #5b5fc7;
             color: #ffffff;
         }
-
 
         .roles-popup-btn-close-icon {
             svg {
@@ -175,37 +175,37 @@
         background-color: #000000;
         border: 1px solid #ffffff;
 
-        h2[class~="ui-header"]
-        {       
-            color: #ffffff;            
-        }
-        button[class~="ui-dialog__headerAction"]
-        {
+        h2[class~="ui-header"] {
             color: #ffffff;
-            &:hover{
+        }
+
+        button[class~="ui-dialog__headerAction"] {
+            color: #ffffff;
+
+            &:hover {
                 background-color: #7F85F5;
                 color: #000000;
             }
         }
-        button[class~="roles-popup-btn-close"]
-        {
+
+        button[class~="roles-popup-btn-close"] {
             background-color: #7F85F5;
             color: #000000;
         }
 
         .role-assignment-table {
-          
+
 
             #role-grid-thead {
                 background: #7F85F5 0% 0% no-repeat padding-box;
-                color: #000000;            
+                color: #000000;
 
                 .thead-border-left {
                     border-left: 0.25px solid #FFFFFF;
                 }
             }
 
-            .role-grid-tbody-area {                
+            .role-grid-tbody-area {
                 #role-grid-tbody {
                     background: #333333 0% 0% no-repeat padding-box;
                     color: #ffffff;
@@ -214,40 +214,42 @@
 
         }
     }
+
     div[class~="view-roles-popup-contrast"] {
         background-color: #000000;
         border: 1px solid #ffffff;
 
-        h2[class~="ui-header"]
-        {       
-            color: #ffffff;            
-        }
-        button[class~="ui-dialog__headerAction"]
-        {
+        h2[class~="ui-header"] {
             color: #ffffff;
-            &:hover{
+        }
+
+        button[class~="ui-dialog__headerAction"] {
+            color: #ffffff;
+
+            &:hover {
                 background-color: #1aebff;
                 color: #000000;
             }
         }
-        button[class~="roles-popup-btn-close"]
-        {
+
+        button[class~="roles-popup-btn-close"] {
             background-color: #ffffff;
             color: #000000;
-            &:hover{
+
+            &:hover {
                 background-color: #1aebff;
             }
         }
 
-        .role-assignment-table {          
+        .role-assignment-table {
 
             #role-grid-thead {
                 background: #1aebff 0% 0% no-repeat padding-box;
-                color: #000000;            
+                color: #000000;
 
             }
 
-            .role-grid-tbody-area {                
+            .role-grid-tbody-area {
                 #role-grid-tbody {
                     background: #000000 0% 0% no-repeat padding-box;
                     color: #ffffff;
@@ -601,7 +603,7 @@ div[class="incident-history"] {
                                 color: var(--colorCompoundBrandForeground1);
                                 height: auto;
                                 padding-left: 0;
-                                justify-content: start;
+                                justify-content: flex-start;
                             }
                         }
                     }

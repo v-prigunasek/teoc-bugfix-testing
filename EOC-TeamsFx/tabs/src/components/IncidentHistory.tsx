@@ -34,10 +34,12 @@ export interface IIncidentHistoryState {
     isListView: boolean;
     gridData: any[];
     isDesktop: boolean;
+    showRoleLeads: boolean;
+    roleLeadDetails: any;
 }
 export interface IIncidentHistoryProps {
     localeStrings: any;
-    onBackClick(showMessageBar: boolean): void;
+    onBackClick(showMessageBar: string): void;
     siteId: string;
     graph: Client;
     appInsights: ApplicationInsights;
@@ -50,12 +52,14 @@ export interface IIncidentHistoryProps {
 
 export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, IIncidentHistoryState>  {
     private listRef: React.RefObject<IList>;
+    private detailsListRef: React.RefObject<HTMLDivElement>;
     private itemHeight = constants.itemHeight;
     private numberOfItemsOnPage = constants.numberOfItemsOnPage;
 
     constructor(props: any) {
         super(props);
         this.listRef = React.createRef();
+        this.detailsListRef = React.createRef();
         this.state = {
             incidentVersionData: [],
             showRoles: false,
@@ -65,7 +69,9 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             seeAllVersions: false,
             isListView: true,
             gridData: [],
-            isDesktop: true
+            isDesktop: true,
+            showRoleLeads: false,
+            roleLeadDetails: []
         }
 
         this.getVersions = this.getVersions.bind(this);
@@ -95,7 +101,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     }
 
     //Component life cycle componentDidUpdate method.
-    public componentDidUpdate(prevProps: IIncidentHistoryProps, prevState: IIncidentHistoryState) {
+    public componentDidUpdate(_prevProps: IIncidentHistoryProps, prevState: IIncidentHistoryState) {
         if (prevState.selectedItem !== this.state.selectedItem) {
             this.listRef.current?.scrollToIndex(
                 this.state.selectedItem ? this.state.selectedItem : 0,
@@ -109,7 +115,9 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     private async getVersions() {
         try {
             //graph endpoint to get all versions
-            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${this.props.incidentId}/versions`;
+            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${this.props.incidentId}/versions?$expand=fields
+            ($select=StatusLookupId,Status,id,IncidentId,IncidentName,IncidentCommander,Location,StartDateTime,
+            Modified,Description,IncidentType,RoleAssignment,Severity,BridgeID,ReasonForUpdate,IncidentStatus,RoleLeads,CloudStorageLink)`;
             const versionsData = await this.dataService.getVersionsData(graphEndpoint, this.props.graph);
 
             this.setState({
@@ -132,7 +140,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     //Format version data when on click of each version in the list view.
     private formatVersionData(versionData: any, index: any) {
         try {
-            var diff = require('deep-diff');
+            let diff = require('deep-diff');
             let currentVersionData = versionData;
             let prevVersionData: any;
             if (index !== this.state.incidentVersionData.length - 1) {
@@ -140,12 +148,15 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             } else {
                 prevVersionData = {};
             }
-            var changes = diff(currentVersionData, prevVersionData);
-            var formattedIncidentsData: Array<IVersionItem> = new Array<IVersionItem>();
-            changes.forEach((item: any) => {
+            let changes = diff(currentVersionData, prevVersionData);
+
+            let formattedIncidentsData: Array<IVersionItem> = new Array<IVersionItem>();
+
+            changes?.forEach((item: any) => {
                 if ((item.path[0] !== constants.modifiedDate &&
                     item.path[0] !== constants.lastModifiedBy) &&
                     item.path[0] !== constants.roleAssignmentsObj &&
+                    item.path[0] !== constants.roleLeadsObj &&
                     (item.lhs !== undefined || item.rhs !== undefined)
                 ) {
 
@@ -177,7 +188,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     //Format version data for table view. 
     private formatGridData() {
         try {
-            var diff = require('deep-diff');
+            let diff = require('deep-diff');
             let dataDifference: any = [];
 
             for (let i = 0; i < this.state.incidentVersionData.length; i++) {
@@ -189,19 +200,25 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     prevVersionData = {};
                 }
                 currentVersionData = this.state.incidentVersionData[i];
-                var changes = diff(currentVersionData, prevVersionData);
+                let changes = diff(currentVersionData, prevVersionData);
+
                 let obj: { [x: string]: any; } = {};
-                changes.forEach((item: { path: (string | number)[]; lhs: any; }) => {
+                changes?.forEach((item: { path: (string | number)[]; lhs: any; }) => {
                     if (item.path[0] === constants.roleAssignmentsObj) {
                         obj[constants.roleAssignmentsObj] = currentVersionData[constants.roleAssignmentsObj];
+                    }
+                    else if (item.path[0] === constants.roleLeadsObj) {
+                        obj[constants.roleLeadsObj] = currentVersionData[constants.roleLeadsObj];
                     }
                     else {
                         obj[item.path[0]] = item.lhs
                     }
                 });
-                //Explicitly adding ModifiedBy to the array since it might have same value in previous version which will not be captured in the difference
-                obj[constants.lastModifiedBy] = currentVersionData[constants.lastModifiedBy];
-                dataDifference.push(obj);
+                if (changes) {
+                    //Explicitly adding ModifiedBy to the array since it might have same value in previous version which will not be captured in the difference
+                    obj[constants.lastModifiedBy] = currentVersionData[constants.lastModifiedBy];
+                    dataDifference.push(obj);
+                }
             }
             this.setState({
                 gridData: dataDifference
@@ -238,7 +255,9 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         try {
             this.setState({
                 showRoles: true,
-                roleDetails: value
+                roleDetails: value,
+                showRoleLeads: false,
+                roleLeadDetails: []
             });
 
         } catch (error) {
@@ -251,10 +270,33 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         }
     }
 
+    //Load assigned role leads of the incident when on click of view role lead button in table view.
+    private loadRoleLeads(value: any) {
+        try {
+            this.setState({
+                showRoleLeads: true,
+                roleLeadDetails: value,
+                showRoles: false,
+                roleDetails: [],
+            });
+
+        } catch (error) {
+            console.error(
+                constants.errorLogPrefix + "IncidentHistory_Load_Role_Leads\n",
+                JSON.stringify(error)
+            );
+            // Log Exception
+            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentHistoryComponent, 'IncidentHistory_Load_Role_Leads', this.props.userPrincipalName);
+        }
+    }
+
     //Hide roles popup when onclick of cancel/back button.
     private hideRoles() {
         this.setState({
-            showRoles: false
+            showRoles: false,
+            showRoleLeads: false,
+            roleDetails: [],
+            roleLeadDetails: []
         })
     }
 
@@ -323,18 +365,18 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         Header: () => <div title={this.props.localeStrings.date}>{this.props.localeStrings.date}</div>,
                         accessor: "modifiedDate",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.date}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 210
+                        width: 210,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.modifiedBy}>{this.props.localeStrings.modifiedBy}</div>,
                         accessor: "lastModifiedBy",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.modifiedBy}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
@@ -349,56 +391,56 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         Header: () => <div title={this.props.localeStrings.fieldIncidentName}>{this.props.localeStrings.fieldIncidentName}</div>,
                         accessor: "incidentName",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldIncidentName}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200
+                        width: 200,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldIncidentStatus}>{this.props.localeStrings.fieldIncidentStatus}</div>,
                         accessor: "status",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldIncidentStatus}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200
+                        width: 200,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldSeverity}>{this.props.localeStrings.fieldSeverity}</div>,
                         accessor: "severity",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldSeverity}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200
+                        width: 150,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldLocation}>{this.props.localeStrings.fieldLocation}</div>,
                         accessor: "location",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldLocation}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200
+                        width: 200,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldIncidentCommander}>{this.props.localeStrings.fieldIncidentCommander}</div>,
                         accessor: "incidentCommander",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldIncidentCommander}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200
+                        width: 200,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.roles}>{this.props.localeStrings.roles}</div>,
@@ -407,19 +449,36 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                             <Button
                                 tabIndex={0}
                                 onClick={() => this.loadRoles(value)}
-                                aria-label={this.props.localeStrings.roles + this.props.localeStrings.viewLabel}
+                                title={this.props.localeStrings.viewLabel}
+                                aria-label={`${this.props.localeStrings.roles} ${this.props.localeStrings.viewLabel}`}
                                 text
                                 className="grid-view-assigned-roles"
                             >
                                 {this.props.localeStrings.viewLabel}
                             </Button> : "",
-                        width: 100
+                        width: 100,
+                    },
+                    {
+                        Header: () => <div title={this.props.localeStrings.roleLeadsLabel}>{this.props.localeStrings.roleLeadsLabel}</div>,
+                        accessor: "roleLeadsObj",
+                        Cell: ({ value }: any) => value ?
+                            <Button
+                                tabIndex={0}
+                                onClick={() => this.loadRoleLeads(value)}
+                                title={this.props.localeStrings.viewLabel}
+                                aria-label={`${this.props.localeStrings.roleLeadsLabel} ${this.props.localeStrings.viewLabel}`}
+                                text
+                                className="grid-view-assigned-roles"
+                            >
+                                {this.props.localeStrings.viewLabel}
+                            </Button> : "",
+                        width: 120,
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldDescription}>{this.props.localeStrings.fieldDescription}</div>,
                         accessor: "incidentDescription",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldDescription}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
@@ -430,8 +489,29 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         Header: () => <div title={this.props.localeStrings.fieldReasonForUpdate}>{this.props.localeStrings.fieldReasonForUpdate}</div>,
                         accessor: "reasonForUpdate",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
+                            if (navigator.userAgent.match(/iPhone|Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldReasonForUpdate}>{value}</span> : "")
+                            else
+                                return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
+                        },
+                        width: 200
+                    }, {
+                        Header: () => <div title={this.props.localeStrings.cloudStorageFieldLabel}>{this.props.localeStrings.cloudStorageFieldLabel}</div>,
+                        accessor: "cloudStorageLink",
+                        Cell: ({ value }: any) => {
+                            if (navigator.userAgent.match(/iPhone|Android/i))
+                                return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.cloudStorageFieldLabel}>{value}</span> : "")
+                            else
+                                return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
+                        },
+                        width: 200
+                    },
+                    {
+                        Header: () => <div title={this.props.localeStrings.fieldBridgeID}>{this.props.localeStrings.fieldBridgeID}</div>,
+                        accessor: "bridgeID",
+                        Cell: ({ value }: any) => {
+                            if (navigator.userAgent.match(/iPhone|Android/i))
+                                return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldBridgeID}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
@@ -440,18 +520,18 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                 ]
             }
         ] : [];
-        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
 
+        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
         return (
             <>
                 <div className="incident-history">
                     <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="incident-history-path">
                         <label>
                             <span
-                                onClick={() => this.props.onBackClick(false)}
+                                onClick={() => this.props.onBackClick("")}
                                 onKeyDown={(event) => {
                                     if (event.key === constants.enterKey)
-                                        this.props.onBackClick(false)
+                                        this.props.onBackClick("")
                                 }}
                                 className="go-back">
                                 <ChevronStartIcon id="path-back-icon" />
@@ -464,7 +544,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     <div className={`incident-history-area${isDarkOrContrastTheme ? " incident-history-area-darkcontrast" : ""}`}>
                         <div className="container">
                             <div className="heading-and-view-selection-area">
-                                <h1 aria-live="polite" role="alert"><div className="incident-history-label">{this.props.localeStrings.incidentHistory} - {this.props.incidentId}</div></h1>
+                                <h1 aria-live="polite" role="alert"> <div className="incident-history-label">{this.props.localeStrings.incidentHistory} - {this.props.incidentId}</div></h1>
                                 <div className="view-selection-area">
                                     <label htmlFor="list-view-select" className="flip-view" title={this.props.localeStrings.listView}>
                                         <input
@@ -477,7 +557,9 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         <img
                                             src={require("../assets/Images/ListViewIcon.svg").default}
                                             alt={this.props.localeStrings.listView}
-                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} />
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`}
+                                        />
+
                                         <span>{this.props.localeStrings.listView}</span>
                                     </label>
                                     <label htmlFor="table-view-select" className="flip-view" title={this.props.localeStrings.tableView}>
@@ -494,14 +576,16 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         <img
                                             src={require("../assets/Images/TableViewIcon.svg").default}
                                             alt={this.props.localeStrings.tableView}
-                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} />
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} 
+                                        />
+                                      
                                         <span>{this.props.localeStrings.tableView}</span>
                                     </label>
                                 </div>
                             </div>
                             {this.state.isListView ?
-                                <div className="activity-version-details-area">
-                                <div className='activity-log-area'>
+                                <div className='activity-version-details-area'>
+                                    <div className='activity-log-area'>
                                         <div className="activity-log-heading" title={this.props.localeStrings.activityLog}>{this.props.localeStrings.activityLog}</div>
                                         <div className='activity-log-list-main-area' data-is-scrollable>
                                             {this.state.incidentVersionData !== undefined &&
@@ -525,13 +609,15 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                             }
                                         </div>
                                     </div>
-                                    <div className='version-details-area'>
+                                    <div className='version-details-area' ref={this.detailsListRef}>
                                         {this.state.versionDetails.length > 0 ?
                                             <DetailsList
                                                 items={this.state.versionDetails}
                                                 columns={listViewColumns}
                                                 layoutMode={DetailsListLayoutMode.justified}
                                                 checkboxVisibility={CheckboxVisibility.hidden}
+                                                onDidUpdate={() => this.detailsListRef.current?.getElementsByClassName("ms-DetailsList-headerWrapper")[0]
+                                                    ?.getElementsByClassName("ms-DetailsHeader")[0]?.setAttribute("aria-busy", "true")}
                                             />
                                             :
                                             <>
@@ -558,7 +644,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         showPagination={false}
                                         sortable={false}
                                     />
-                                    {this.state.showRoles ?
+                                    {(this.state.showRoles || this.state.showRoleLeads) ?
                                         <Dialog
                                             cancelButton={{
                                                 icon: <CloseIcon bordered circular size="smallest" className="roles-popup-btn-close-icon" />,
@@ -571,10 +657,12 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                                 <div className="role-assignment-table">
                                                     <Row id="role-grid-thead" xs={2} sm={2} md={2}>
                                                         <Col md={6} sm={6} xs={6} >{this.props.localeStrings.headerRole}</Col>
-                                                        <Col md={6} sm={6} xs={6} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
+                                                        <Col md={6} sm={6} xs={6} className="thead-border-left">
+                                                            {this.state.showRoles ? this.props.localeStrings.headerUsers : this.props.localeStrings.leadLabel}
+                                                        </Col>
                                                     </Row>
                                                     <div className="role-grid-tbody-area">
-                                                        {this.state.roleDetails.map((item: any, index: any) => (
+                                                        {(this.state.showRoles ? this.state.roleDetails : this.state.roleLeadDetails).map((item: any, index: any) => (
                                                             <Row xs={2} sm={2} md={2} key={index} id="role-grid-tbody">
                                                                 <Col md={6} sm={6} xs={6}>{item.Role}</Col>
                                                                 <Col md={6} sm={6} xs={6}>{item.Users}</Col>
@@ -584,13 +672,13 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                                     </div>
                                                 </div>
                                             }
-                                            header={this.props.localeStrings.roles}
+                                            header={this.state.showRoles ? this.props.localeStrings.roles : this.props.localeStrings.roleLeadsLabel}
                                             headerAction={{
                                                 icon: <CloseIcon onClick={() => this.hideRoles()} />,
                                                 title: this.props.localeStrings.btnClose,
                                             }}
                                             onCancel={(e) => this.hideRoles()}
-                                            open={this.state.showRoles}
+                                            open={this.state.showRoles || this.state.showRoleLeads}
                                             className={`view-roles-popup${this.props.currentThemeName === constants.darkMode ? " view-roles-popup-dark" : `${this.props.currentThemeName === constants.contrastMode ? " view-roles-popup-contrast":""}`}`}
                                         />
                                         : null}

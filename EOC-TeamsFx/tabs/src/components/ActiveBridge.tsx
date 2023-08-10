@@ -28,8 +28,7 @@ export interface ActiveBridgeProps {
     onEditButtonClick: Function;
     isOwner: boolean;
     graphContextURL: string;
-    tenantID: any;
-    fromActiveDashboardTab: boolean;
+    tenantID : any;
 }
 
 export interface ActiveBridgeState {
@@ -70,18 +69,16 @@ export default class ActiveBridge extends React.Component<ActiveBridgeProps, Act
         return (
             <div
                 className={`active-bridge-wrapper${(this.state.showBridgeLoader || this.state.showTasksLoader) ? " disable-active-bridge" : ""}`}>
-                {!this.props.fromActiveDashboardTab &&
-                    <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="active-bridge-path">
-                        <label>
-                            <span onClick={() => this.props.onBackClick("")} className="go-back">
-                                <ChevronStartIcon id="path-back-icon" />
-                                <span className="back-label" title={this.props.localeStrings.back}>{this.props.localeStrings.back}</span>
-                            </span> &nbsp;&nbsp;
-                            <span className="right-border">|</span>
-                            <span title={this.props.localeStrings.activeDashboard}>&nbsp;&nbsp;{this.props.localeStrings.activeDashboard}</span>
-                        </label>
-                    </div>
-                }
+                <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="active-bridge-path">
+                    <label>
+                        <span onClick={() => this.props.onBackClick("")} className="go-back">
+                            <ChevronStartIcon id="path-back-icon" />
+                            <span className="back-label" title={this.props.localeStrings.back}>{this.props.localeStrings.back}</span>
+                        </span> &nbsp;&nbsp;
+                        <span className="right-border">|</span>
+                        <span title={this.props.localeStrings.activeDashboard}>&nbsp;&nbsp;{this.props.localeStrings.activeDashboard}</span>
+                    </label>
+                </div>
                 <div className="active-bridge-area">
                     <div className="container">
                         <div className='active-bridge-heading'>

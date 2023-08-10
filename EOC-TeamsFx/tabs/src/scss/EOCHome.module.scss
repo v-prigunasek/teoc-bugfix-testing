@@ -36,18 +36,23 @@
     }
 
     div.message-bar {
-        span {
-            font: normal normal normal 16px/21px Segoe UI;
-        }
+        div.ms-MessageBar-content {
+            padding-left: 0;
+            padding-right: 0;
 
-        i {
-            font-size: 20px;
-            margin-top: 1px;
-        }
+            span {
+                font: normal normal normal 16px/21px Segoe UI;
+            }
 
-        i[data-icon-name="Clear"] {
-            font-size: 15px;
-            margin-top: 5px;
+            i {
+                font-size: 20px;
+                margin-top: 1px;
+            }
+
+            i[data-icon-name="Clear"] {
+                font-size: 15px;
+                margin-top: 5px;
+            }
         }
     }
 
@@ -60,9 +65,9 @@ div[class~="eoc-header"] {
     width: 100%;
     height: auto;
     max-height: 100vh;
+    background: #464775 0% 0% no-repeat padding-box;
     opacity: 1;
     padding: 19px 41px;
-    background: #464775 0% 0% no-repeat padding-box;
 
     img[class="ms-logo"] {
         width: 32px;
