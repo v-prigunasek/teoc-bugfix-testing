@@ -17,30 +17,29 @@ import * as graphConfig from '../common/graphConfig';
 import siteConfig from '../config/siteConfig.json';
 import '../scss/IncidentDetails.module.scss';
 import {
-    ChannelCreationResult, ChannelCreationStatus,
-    IncidentEntity, IInputValidationStates, ITeamChannel, RoleAssignments,
-    UserDetails, IInputRegexValidationStates, IAdditionalTeamChannels, IGuestUsers, IIncidentStatus
+    ChannelCreationResult, ChannelCreationStatus, IncidentEntity,
+    IInputValidationStates, ITeamChannel, ITeamCreatedResponse,
+    RoleAssignments,
+    UserDetails
 } from "./ICreateIncident";
-import { TooltipHost } from "@fluentui/react/lib/Tooltip";
+import { IInputRegexValidationStates } from '../common/CommonService';
+import { ITooltipHostStyles, TooltipHost } from "@fluentui/react/lib/Tooltip";
 import { Icon } from "@fluentui/react/lib/Icon";
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import ReactSlider from 'react-slider';
-import { Checkbox } from '@fluentui/react/lib/Checkbox';
-import { Toggle } from '@fluentui/react/lib/Toggle';
-import { AddIcon } from '@fluentui/react-icons-northstar';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { Checkbox, ICheckboxProps } from '@fluentui/react/lib/Checkbox';
 import { DatePicker, IComboBox, TimePicker, ComboBox } from "@fluentui/react";
-import { PeopleEdit24Regular, Delete24Regular, Dismiss24Regular, Save24Regular, PeopleCheckmark24Regular, CloudLink24Regular } from "@fluentui/react-icons";
-import { Checkbox as Fluent9CheckBox } from "@fluentui/react-components"
+import { PeopleEdit24Regular, Delete24Regular, Dismiss24Regular, Save24Regular } from "@fluentui/react-icons";
+
 
 const calloutProps = { gapSpace: 0 };
 
+const hostStyles: Partial<ITooltipHostStyles> = { root: { display: 'inline-block', cursor: 'pointer' } };
 export interface IIncidentDetailsProps {
     graph: Client;
-    graphBaseUrl: any;
-    graphContextURL: string;
+    tenantName: string;
     siteId: string;
-    onBackClick(showMessageBar: string): void;
+    onBackClick(showMessageBar: boolean): void;
     showMessageBar(message: string, type: string): void;
     hideMessageBar(): void;
     localeStrings: any;
@@ -50,9 +49,7 @@ export interface IIncidentDetailsProps {
     isEditMode?: boolean;
     appInsights: ApplicationInsights;
     userPrincipalName: any;
-    tenantID: any;
     currentThemeName: string;
-    appSettings: any;
 }
 
 export interface IIncidentDetailsState {
@@ -87,19 +84,6 @@ export interface IIncidentDetailsState {
     saveDefaultRoleCheck: any;
     saveIncidentTypeDefaultRoleCheck: any;
     isEditMode: boolean;
-    graphContextURL: string;
-    selectedLead: any;
-    selectedLeadInEditMode: any;
-    toggleCloudStorageLocation: boolean;
-    toggleAdditionalChannels: boolean;
-    saveDefaultAdditionalChannels: boolean;
-    saveDefaultCloudStorageLink: boolean;
-    toggleGuestUsers: boolean;
-    incCommanderHasRegexError: boolean;
-    secIncCommanderUserHasRegexError: boolean;
-    secIncCommanderLeadHasRegexError: boolean;
-    secIncCommanderUserInEditModeHasRegexError: boolean;
-    secIncCommanderLeadInEditModeHasRegexError: boolean;
     roleAddSuccessMessage: string;
 }
 
@@ -113,9 +97,7 @@ const getInputValidationInitialState = (): IInputValidationStates => {
         incidentDescriptionHasError: false,
         incidentStartDateTimeHasError: false,
         incidentCommandarHasError: false,
-        incidentReasonForUpdateHasError: false,
-        cloudStorageLinkHasError: false,
-        guestUsersHasError: false
+        incidentReasonForUpdateHasError: false
     };
 };
 
@@ -131,18 +113,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private searchUser: any;
     private searchUserEditMode: any;
 
-    private incCommanderRef: React.RefObject<any>;
-    private normalSearchUserRef: React.RefObject<any>;
-    private normalSearchLeadRef: React.RefObject<any>;
-    private incTypeRef: any;
-
-
     constructor(props: IIncidentDetailsProps) {
         super(props);
-        this.incCommanderRef = React.createRef();
-        this.normalSearchUserRef = React.createRef();
-        this.normalSearchLeadRef = React.createRef();
-        this.incTypeRef = React.createRef();
+
         this.state = {
             dropdownOptions: '',
             incDetailsItem: new IncidentEntity(),
@@ -175,19 +148,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             saveDefaultRoleCheck: false,
             saveIncidentTypeDefaultRoleCheck: false,
             isEditMode: false,
-            graphContextURL: this.props.graphContextURL,
-            selectedLead: [],
-            selectedLeadInEditMode: [],
-            toggleCloudStorageLocation: false,
-            toggleAdditionalChannels: false,
-            saveDefaultAdditionalChannels: false,
-            saveDefaultCloudStorageLink: false,
-            toggleGuestUsers: false,
-            incCommanderHasRegexError: false,
-            secIncCommanderUserHasRegexError: false,
-            secIncCommanderLeadHasRegexError: false,
-            secIncCommanderUserInEditModeHasRegexError: false,
-            secIncCommanderLeadInEditModeHasRegexError: false,
             roleAddSuccessMessage: ""
         };
         this.onRoleChange = this.onRoleChange.bind(this);
@@ -196,6 +156,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         this.onAddNewRoleChange = this.onAddNewRoleChange.bind(this);
         this.onIncidentTypeChange = this.onIncidentTypeChange.bind(this);
         this.onIncidentStatusChange = this.onIncidentStatusChange.bind(this);
+        this.onRoleChange = this.onRoleChange.bind(this);
 
         // localized messages for people pickers
         LocalizationHelper.strings = {
@@ -206,6 +167,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 }
             }
         }
+
         // initialize ref object to assign unique reference for DOM element.
         // to set focus after validation
         this.incidentName = React.createRef();
@@ -230,29 +192,27 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
         // check if form is in edit mode
         await this.checkIfEditMode();
-
-        //update people picker control with required accessibility attributes
-        this.updatePeoplePickerAttributes(this.incCommanderRef.current, this.state.selectedIncidentCommander.length > 0);
-        this.updatePeoplePickerAttributes(this.normalSearchUserRef.current, this.state.selectedUsers.length > 0);
-        this.updatePeoplePickerAttributes(this.normalSearchLeadRef.current, this.state.selectedLead.length > 0);
-
+        this.updatePeoplePickerRole();
         this.getTeamNameConfigData();
         this.getRoleDefaultData();
         if (!this.state.isEditMode) {
-            this.getIncidentTypeDefaultData();
-            this.onToggleAdditionChannels(true);
-            //set the current date and time for the date and time picker variables
-            this.setDefaultDateTime();
+            this.getIncidentTypeDefaultRoles();
         }
+        //set the current date and time for the startDateTime variable
+        this.formatStartDateTime(new Date(), new Date());
+        //setting initial focus
+        setTimeout(() => {
+            this.incidentName.current.focus();
+        }, 2500);
+
     }
 
     //get team name configuration data
     public getTeamNameConfigData = async () => {
         try {
             //graph endpoint to get data from team name configuration list
-            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.configurationList}/items?$expand=fields&$Top=5000`;
-            let configData = await this.dataService.getConfigData(graphEndpoint, this.props.graph, 'TeamNameConfig');
-            configData = { ...configData, value: JSON.parse(configData.value) };
+            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.teamNameConfigList}/items?$expand=fields&$Top=5000`;
+            const configData = await this.dataService.getConfigData(graphEndpoint, this.props.graph, 'TeamNameConfig');
             let filteredArr: any = Object.keys(configData.value)
                 .filter((key) => key.includes(constants.teamNameConfigConstants.IncidentName) || !key.includes(constants.teamNameConfigConstants.PrefixValue) || key.includes(constants.teamNameConfigConstants.IncidentType) || key.includes(constants.teamNameConfigConstants.StartDate))
                 .reduce((obj, key) => {
@@ -297,71 +257,50 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     }
 
     //get incident type default roles
-    private getIncidentTypeDefaultData = async () => {
+    private getIncidentTypeDefaultRoles = async () => {
         try {
             //graph endpoint to get data from Role Default list
             let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentTypeDefaultRolesList}/items?$expand=fields&$Top=5000`;
-            const incidentTypeRolesDefaultListData = await this.dataService.getIncidentTypeDefaultData(graphEndpoint, this.props.graph);
+            const incidentTypeRolesDefaultListData = await this.dataService.getIncidentTypeDefaultRolesData(graphEndpoint, this.props.graph);
             this.setState({
                 incidentTypeRoleDefaultData: incidentTypeRolesDefaultListData
-            });
+            })
         }
         catch (error: any) {
             console.error(
-                constants.errorLogPrefix + "IncidentDetails_getIncidentTypeDefaultData \n",
+                constants.errorLogPrefix + "IncidentDetails_GetIncidentTypeDefaultRoles \n",
                 JSON.stringify(error)
             );
             // Log Exception
-            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'IncidentDetails_getIncidentTypeDefaultData', this.props.userPrincipalName);
+            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'IncidentDetails_GetIncidentTypeDefaultRoles', this.props.userPrincipalName);
         }
     }
 
     //Function for screen Resizing
     resize = () => this.setState({ isDesktop: window.innerWidth > constants.mobileWidth })
 
-    //updating people picker control with accessibility attributes
-    private updatePeoplePickerAttributes = (peoplePickerRef: any, selected: boolean) => {
+    //Update Roles in Both People Pickers
+    private updatePeoplePickerRole = () => {
         customElements.whenDefined('mgt-people-picker').then(() => {
-            if (selected) {
-                const ariaLabel = peoplePickerRef?.getElementsByTagName("mgt-people-picker")[0]?.getAttribute("title");
-                peoplePickerRef?.getElementsByTagName("mgt-people-picker")[0]?.shadowRoot
-                    ?.querySelector('#selected-list')?.setAttribute('aria-label', ariaLabel);
-            }
-            else {
-                peoplePickerRef?.getElementsByTagName("mgt-people-picker")[0]?.shadowRoot
-                    ?.querySelector('mgt-flyout')?.querySelector('#people-picker-input')?.setAttribute('role', 'searchbox');
-                peoplePickerRef?.getElementsByTagName("mgt-people-picker")[0]?.shadowRoot
-                    ?.querySelector('mgt-flyout')?.querySelector('#people-picker-input')?.removeAttribute('aria-expanded');
-            }
+            let peoplePicker1 = document?.getElementsByTagName("mgt-people-picker")[0]?.shadowRoot?.querySelector('mgt-flyout')?.querySelector('#people-picker-input');
+            let peoplePicker2 = document?.getElementsByTagName("mgt-people-picker")[1]?.shadowRoot?.querySelector('mgt-flyout')?.querySelector('#people-picker-input');
+            peoplePicker1?.setAttribute('role', 'searchbox');
+            peoplePicker2?.setAttribute('role', 'searchbox');
         })
     }
 
-    //updating people picker control with accessibility attributes whenever component is updated
-    public componentDidUpdate(_prevProps: IIncidentDetailsProps, prevState: IIncidentDetailsState) {
-        if (prevState.selectedIncidentCommander !== this.state.selectedIncidentCommander &&
-            this.state.selectedIncidentCommander.length === 0) {
-            this.updatePeoplePickerAttributes(this.incCommanderRef.current, this.state.selectedIncidentCommander.length > 0);
+    //this method is called whenever the component is updated
+    public componentDidUpdate(prevProps: IIncidentDetailsProps, prevState: IIncidentDetailsState) {
+        if (prevState.selectedUsersInEditMode !== this.state.selectedUsersInEditMode ||
+            prevState.selectedIncidentCommander !== this.state.selectedIncidentCommander) {
+            this.updatePeoplePickerRole();
         }
-        if (prevState.selectedUsers !== this.state.selectedUsers) {
-            this.updatePeoplePickerAttributes(this.normalSearchUserRef.current, this.state.selectedUsers.length > 0);
-        }
-        if (prevState.selectedLead !== this.state.selectedLead && this.state.selectedLead.length === 0) {
-            this.updatePeoplePickerAttributes(this.normalSearchLeadRef.current, this.state.selectedLead.length > 0);
-        }
-        //set the state variable with start date and time when the date or time changes in the picker controls        
+        //set the state variable with start date and time when the date or time changes in the picker controls
         if (prevState.incDetailsItem.startDate !== this.state.incDetailsItem.startDate ||
             prevState.incDetailsItem.startTime !== this.state.incDetailsItem.startTime) {
 
             this.formatStartDateTime(this.state.incDetailsItem.startDate, this.state.incDetailsItem.startTime);
         }
-    }
-
-    //set the state variables with default date and time
-    private setDefaultDateTime() {
-        let incInfo = { ...this.state.incDetailsItem };
-        incInfo["startTime"] = new Date();
-        incInfo["startDate"] = new Date();
-        this.setState({ incDetailsItem: incInfo });
     }
 
     //set the state variable with date and time in the UTC format
@@ -381,8 +320,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     }
 
-    // removing event listener for screen resizing on component unmount
-    public componentWillUnmount() {
+    componentWillUnmount() {
         //Event listener for screen resizing
         window.removeEventListener("resize", this.resize.bind(this));
     }
@@ -394,7 +332,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             const incTypeGraphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}${graphConfig.listsGraphEndpoint}/${siteConfig.incTypeList}/items?$expand=fields&$Top=5000`;
             const roleGraphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}${graphConfig.listsGraphEndpoint}/${siteConfig.roleAssignmentList}/items?$expand=fields&$Top=5000`;
 
-            const statusOptionsPromise = this.dataService.getDropdownOptions(incStatusGraphEndpoint, this.props.graph, true);
+            const statusOptionsPromise = this.dataService.getDropdownOptions(incStatusGraphEndpoint, this.props.graph);
             const typeOptionsPromise = this.dataService.getDropdownOptions(incTypeGraphEndpoint, this.props.graph);
             const roleOptionsPromise = this.dataService.getDropdownOptions(roleGraphEndpoint, this.props.graph);
 
@@ -403,7 +341,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     const optionsArr: any = [];
                     // remove "Closed" status from options if form is New Form
                     if (!(this.props.incidentData && this.props.incidentData.incidentId)) {
-                        optionsArr.statusOptions = statusOptions.filter((statusObj: any) => statusObj.status !== constants.closed);
+                        optionsArr.statusOptions = statusOptions.filter((status: string) => status !== constants.closed);
                     }
                     else {
                         optionsArr.statusOptions = statusOptions
@@ -412,16 +350,15 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     optionsArr.typeOptions = typeOptions.sort();
                     optionsArr.roleOptions = roleOptions.sort();
 
-                    const activeStatus = optionsArr.statusOptions.find((statusObj: IIncidentStatus) =>
-                        statusObj.status === constants.active);
-
-                    let incInfo: IncidentEntity = { ...this.state.incDetailsItem };
+                    let incInfo = { ...this.state.incDetailsItem };
                     let inputValidationObj = this.state.inputValidation;
                     if (incInfo) {
-                        //default the status to Active when the Status dropdown is blank
-                        if (incInfo["incidentStatus"] === undefined && activeStatus !== undefined)
-                            incInfo["incidentStatus"] = { status: constants.active, id: activeStatus.id };
-                        inputValidationObj.incidentStatusHasError = false;
+                        if (incInfo) {
+                            //default the status to Active when the Status dropdown is blank
+                            if (incInfo["incidentStatus"] === undefined)
+                                incInfo["incidentStatus"] = constants.active;
+                            inputValidationObj.incidentStatusHasError = false;
+                        }
                     }
 
                     this.setState({
@@ -472,17 +409,15 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             incInfo.incidentName = this.props.incidentData.incidentName ? this.props.incidentData.incidentName : '';
             incInfo.incidentType = this.props.incidentData.incidentType ? this.props.incidentData.incidentType : '';
             incInfo.startDateTime = this.props.incidentData.startDate ? this.props.incidentData.startDate : '';
-            incInfo.incidentStatus = this.props.incidentData.incidentStatusObj ? this.props.incidentData.incidentStatusObj : { status: undefined, id: undefined };
+            incInfo.incidentStatus = this.props.incidentData.status ? this.props.incidentData.status : '';
             incInfo.incidentCommander = incCommanderObj;
             incInfo.location = this.props.incidentData.location ? this.props.incidentData.location : '';
             incInfo.incidentDesc = this.props.incidentData.incidentDescription ? this.props.incidentData.incidentDescription : '';
             incInfo.severity = this.props.incidentData.severity ? this.props.incidentData.severity.toString() : "";
             incInfo.reasonForUpdate = '';
-            incInfo.cloudStorageLink = this.props.incidentData.cloudStorageLink ? this.props.incidentData.cloudStorageLink : '';
             const rolesObj: any[] = [];
             const isRoleInEditMode: boolean[] = [];
             const roleAssignments = this.props.incidentData.roleAssignments ? this.props.incidentData.roleAssignments : '';
-            const roleLeads = this.props.incidentData.roleLeads ? this.props.incidentData.roleLeads : '';
 
             if (roleAssignments.length > 0 && roleAssignments.split(";").length > 1) {
                 roleAssignments.split(";").forEach(role => {
@@ -511,36 +446,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 });
             }
 
-            //adding role lead for each role into the rolesObj array
-            if (roleLeads.length > 0 && roleLeads.split(";").length > 1) {
-                roleLeads.split(";").forEach(role => {
-                    if (role.length > 0) {
-                        let leadNameStr = "";
-                        isRoleInEditMode.push(false);
-                        const leadDetailsObj: any[] = [];
-                        role.split(":")[1].trim().split(",").forEach(user => {
-                            leadNameStr += user.split("|")[0].trim() + ", ";
-                            leadDetailsObj.push({
-                                userName: user.split("|")[0].trim(),
-                                userEmail: user.split("|")[2].trim(),
-                                userId: user.split("|")[1].trim(),
-                            });
-                        });
-                        leadNameStr = leadNameStr.trim();
-                        leadNameStr = leadNameStr.slice(0, -1);
-
-                        const roleObj = rolesObj.find(e => e.role === role.split(":")[0].trim());
-                        const roleNewObj = {
-                            ...roleObj,
-                            leadNameString: leadNameStr,
-                            leadObjString: role.split(":")[1].trim(),
-                            leadDetailsObj: leadDetailsObj
-                        };
-                        rolesObj[rolesObj.findIndex(e => e.role === role.split(":")[0].trim())] = roleNewObj
-                    }
-                });
-            }
-
             const selectedRoles = rolesObj.map((roles: any) => roles.role);
             let roleOptions = this.state.dropdownOptions["roleOptions"].filter((role: string) => selectedRoles.indexOf(role) === -1);
             const dropdownOptions = this.state.dropdownOptions;
@@ -557,56 +462,39 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 incidentTypeSearchQuery: this.props.incidentData.incidentType ? this.props.incidentData.incidentType : '',
                 dropdownOptions: dropdownOptions,
                 selectedSeverity: constants.severity.indexOf(incInfo.severity) === -1 ? 0 : constants.severity.indexOf(incInfo.severity),
-                isEditMode: true,
-                toggleCloudStorageLocation: incInfo.cloudStorageLink.trim() !== ""
+                isEditMode: true
             })
         }
     }
 
-    // Update Incident Commander object on change of incident commander
+    // on incident commander change
     private handleIncCommanderChange = (selectedValue: any) => {
         let incInfo = { ...this.state.incDetailsItem };
         if (incInfo) {
             let inputValidationObj = this.state.inputValidation;
-            let incCommanderHasRegexError = this.state.incCommanderHasRegexError;
             const selctedIncCommander = [];
-            //update selected incident commander object 
             if (selectedValue.detail.length > 0) {
                 inputValidationObj.incidentCommandarHasError = false;
-                // Restrict External users to be added as incident commander
-                if (selectedValue.detail[0].userPrincipalName.match("#EXT#") === null) {
-                    incCommanderHasRegexError = false;
-                    selctedIncCommander.push({
-                        displayName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
-                        userPrincipalName: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
-                        id: selectedValue.detail[0] ? selectedValue.detail[0].id.includes("@") ? selectedValue.detail[0].id.split("@")[0] : selectedValue.detail[0].id : ''
-                    });
-                    // create user object for incident commander
-                    incInfo.incidentCommander = {
-                        userName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
-                        userEmail: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
-                        userId: selectedValue.detail[0] ? selectedValue.detail[0].id.includes("@") ? selectedValue.detail[0].id.split("@")[0] : selectedValue.detail[0].id : ''
-
-                    }
-                }
-                else
-                    incCommanderHasRegexError = true;
+                selctedIncCommander.push({
+                    displayName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
+                    userPrincipalName: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
+                    id: selectedValue.detail[0] ? selectedValue.detail[0].id : ''
+                })
             }
             else {
                 inputValidationObj.incidentCommandarHasError = true;
-                incCommanderHasRegexError = false;
-                // create user object for incident commander
-                incInfo.incidentCommander = {
-                    userName: '',
-                    userEmail: '',
-                    userId: ''
-                }
             }
+            // create user object for incident commander
+            incInfo.incidentCommander = {
+                userName: selectedValue.detail[0] ? selectedValue.detail[0].displayName.replace(",", "") : '',
+                userEmail: selectedValue.detail[0] ? selectedValue.detail[0].userPrincipalName : '',
+                userId: selectedValue.detail[0] ? selectedValue.detail[0].id : ''
+            }
+
             this.setState({
                 incDetailsItem: incInfo,
                 selectedIncidentCommander: selctedIncCommander,
-                inputValidation: inputValidationObj,
-                incCommanderHasRegexError: incCommanderHasRegexError
+                inputValidation: inputValidationObj
             });
         }
     };
@@ -615,6 +503,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private onTextInputChange = (event: any, key: string) => {
         let incInfo = { ...this.state.incDetailsItem };
         let inputValidationObj = this.state.inputValidation;
+        let regexValidationObj = this.state.inputRegexValidation;
         if (incInfo) {
             switch (key) {
                 case "incidentName":
@@ -667,16 +556,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     }
                     this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj })
                     break;
-                case "cloudStorageLink":
-                    incInfo[key] = event.target.value;
-                    if (event.target.value.length > 0) {
-                        inputValidationObj.cloudStorageLinkHasError = false;
-                    }
-                    else {
-                        inputValidationObj.cloudStorageLinkHasError = true;
-                    }
-                    this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj });
-                    break;
                 default:
                     break;
             }
@@ -700,11 +579,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         //check if we have data for selected role
         const filteredincidentTypeDefaultData = this.state.incidentTypeRoleDefaultData.filter((e: any) => e.incidentType === selectedValue.key);
         const rolesObj: any[] = [];
-        let defaultAdditionalChannels: IAdditionalTeamChannels[] = [];
         const isRoleInEditMode: boolean[] = [];
         //format roles object
-        if (filteredincidentTypeDefaultData.length > 0 && filteredincidentTypeDefaultData[0]?.roleAssignments?.split(";").length > 1) {
-            filteredincidentTypeDefaultData[0]?.roleAssignments?.split(";").forEach((role: any) => {
+        if (filteredincidentTypeDefaultData.length > 0 && filteredincidentTypeDefaultData[0].roleAssignments.split(";").length > 1) {
+            filteredincidentTypeDefaultData[0].roleAssignments.split(";").forEach((role: any) => {
                 if (role.length > 0) {
                     let userNamesStr = "";
                     isRoleInEditMode.push(false);
@@ -729,78 +607,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 }
             });
         }
-        //format roles object with lead details
-        if (filteredincidentTypeDefaultData.length > 0 && filteredincidentTypeDefaultData[0]?.roleLeads?.split(";").length > 1) {
-            filteredincidentTypeDefaultData[0]?.roleLeads?.split(";").forEach((role: any) => {
-                if (role.length > 0) {
-                    let leadNameStr = "";
-                    isRoleInEditMode.push(false);
-                    const leadDetailsObj: any[] = [];
-                    role.split(":")[1].trim().split(",").forEach((user: any) => {
-                        leadNameStr += user.split("|")[0].trim() + ", ";
-                        leadDetailsObj.push({
-                            userName: user.split("|")[0].trim(),
-                            userEmail: user.split("|")[2].trim(),
-                            userId: user.split("|")[1].trim(),
-                        });
-                    });
-                    leadNameStr = leadNameStr.trim();
-                    leadNameStr = leadNameStr.slice(0, -1);
-
-                    const roleObj = rolesObj.find(e => e.role === role.split(":")[0].trim());
-                    rolesObj.splice(rolesObj.findIndex(e => e.role === role.split(":")[0].trim()), 1);
-
-                    rolesObj.push({
-                        ...roleObj,
-                        leadNameString: leadNameStr,
-                        leadObjString: role.split(":")[1].trim(),
-                        leadDetailsObj: leadDetailsObj
-                    });
-                }
-            });
-        }
-        //Format and Assign default additional channels
-        if (filteredincidentTypeDefaultData.length > 0 &&
-            filteredincidentTypeDefaultData[0].additionalChannels.split(',').length > 1) {
-            filteredincidentTypeDefaultData[0].additionalChannels.split(',').forEach((channel: any) => {
-                const channelObj = {
-                    channelName: channel.trim(),
-                    hasRegexError: false,
-                    regexErrorMessage: ""
-                }
-                defaultAdditionalChannels.push(channelObj);
-            });
-            if (defaultAdditionalChannels.length === 2) {
-                defaultAdditionalChannels.push({ channelName: "", hasRegexError: false, regexErrorMessage: "" });
-            }
-        }
-        else {
-            const channel = filteredincidentTypeDefaultData[0]?.additionalChannels?.split(',')[0]?.trim();
-            if (channel !== "" && channel !== undefined) {
-                defaultAdditionalChannels.push({ channelName: channel, hasRegexError: false, regexErrorMessage: "" });
-                while (defaultAdditionalChannels.length < 3) {
-                    defaultAdditionalChannels.push({ channelName: "", hasRegexError: false, regexErrorMessage: "" });
-                }
-            }
-            else {
-                defaultAdditionalChannels = [
-                    { channelName: constants.defaultChannelConstants.Logistics, hasRegexError: false, regexErrorMessage: "" },
-                    { channelName: constants.defaultChannelConstants.Planning, hasRegexError: false, regexErrorMessage: "" },
-                    { channelName: constants.defaultChannelConstants.Recovery, hasRegexError: false, regexErrorMessage: "" }
-                ];
-            }
-        }
-        //Assign default Cloud Storage link
-        if (filteredincidentTypeDefaultData.length > 0) {
-            const cloudStorageLink = filteredincidentTypeDefaultData[0]?.cloudStorageLink?.trim();
-            this.setState({
-                incDetailsItem: {
-                    ...this.state.incDetailsItem,
-                    cloudStorageLink: cloudStorageLink !== "" ? cloudStorageLink : ""
-                }
-            });
-        }
-        else this.setState({ incDetailsItem: { ...this.state.incDetailsItem, cloudStorageLink: "" } })
 
         const selectedRoles = rolesObj.map((roles: any) => roles.role);
         let roleOptions = this.state.dropdownOptions["roleOptions"].filter((role: string) => selectedRoles.indexOf(role) === -1);
@@ -815,30 +621,30 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 incInfo["selectedRole"] = "";
                 let inputValidationObj = this.state.inputValidation;
                 inputValidationObj.incidentTypeHasError = false;
-                inputValidationObj.cloudStorageLinkHasError = false;
                 this.setState({
                     selectedUsers: [],
-                    selectedLead: [],
-                    incDetailsItem: {
-                        ...incInfo,
-                        additionalTeamChannels: [...defaultAdditionalChannels]
-                    },
+                    incDetailsItem: incInfo,
                     inputValidation: inputValidationObj,
                     roleAssignments: filteredincidentTypeDefaultData.length > 0 ? rolesObj : [],
                     existingRolesMembers: filteredincidentTypeDefaultData.length > 0 ? rolesObj : [],
                     isRoleInEditMode: isRoleInEditMode
-                });
+                })
             }
         }
     }
 
+    // on incident type dropdown value change
+    private onSearchQueryChange = (event: any, data: any) => {
+        this.setState({ incidentTypeSearchQuery: data.searchQuery });
+    }
+
     // on incident status dropdown value change
-    private onIncidentStatusChange = (_event: any, selectedValue: any) => {
+    private onIncidentStatusChange = (event: any, selectedValue: any) => {
         let incInfo = this.state.incDetailsItem;
         if (incInfo) {
             let incInfo = { ...this.state.incDetailsItem };
             if (incInfo) {
-                incInfo["incidentStatus"] = { status: selectedValue.text, id: selectedValue.key };
+                incInfo["incidentStatus"] = selectedValue.key;
                 let inputValidationObj = this.state.inputValidation;
                 inputValidationObj.incidentStatusHasError = false;
                 this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj })
@@ -847,20 +653,25 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     }
 
     // on role dropdown value change
-    private onRoleChange = (_event: any, selectedRole: any) => {
+    private onRoleChange = (event: any, selectedRole: any) => {
         this.setState({
             roleAddSuccessMessage: ""
         })
         //check if we have data for selected role
         const filteredRoleData = this.state.roleDefaultData.filter((e: any) => e.role === selectedRole.value);
         let incInfo = this.state.incDetailsItem;
-
+        const selectedUsersArr: any = [];
         if (incInfo) {
             let incInfo = { ...this.state.incDetailsItem };
             if (incInfo) {
                 incInfo["selectedRole"] = selectedRole.value;
                 incInfo["assignedUser"] = filteredRoleData.length > 0 ?
                     filteredRoleData[0].users.map((user: any) => {
+                        selectedUsersArr.push({
+                            displayName: user.displayName,
+                            userPrincipalName: user.userPrincipalName,
+                            id: user.id
+                        });
                         return {
                             "userName": user ? user.displayName : "",
                             "userEmail": user ? user.userPrincipalName : "",
@@ -868,25 +679,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         }
                     })
                     : [];
-                incInfo["assignedLead"] = filteredRoleData.length > 0 && filteredRoleData[0].lead.length > 0 ?
-                    filteredRoleData[0].lead.map((user: any) => {
-                        return {
-                            "userName": user ? user.displayName : "",
-                            "userEmail": user ? user.userPrincipalName : "",
-                            "userId": user ? user.id : "",
-                        }
-                    })
-                    : [];
-
-                this.setState({
-                    incDetailsItem: incInfo,
-                    selectedUsers: filteredRoleData.length > 0 ? filteredRoleData[0].users : [],
-                    selectedLead: filteredRoleData.length > 0 ? filteredRoleData[0].lead : [],
-                    secIncCommanderUserHasRegexError: false,
-                    secIncCommanderLeadHasRegexError: false
-                },
-                    //check the state to enable or disable the Add Role button
-                    (() => this.checkAddRoleBtnState()))
+                this.setState({ incDetailsItem: incInfo, selectedUsers: filteredRoleData.length > 0 ? filteredRoleData[0].users : [] }, (() => this.checkAddRoleBtnState()))
             }
         }
     }
@@ -950,219 +743,49 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     }
 
-    // Update Role Assigned User on change of User in role assignment people picker 
+    // on assigned user change
     private handleAssignedUserChange = (selectedValue: any) => {
         let incInfo = { ...this.state.incDetailsItem };
-        let secIncCommanderUserHasRegexError = this.state.secIncCommanderUserHasRegexError;
         const selectedUsersArr: any = [];
-        let assignedUsersArray: any = [];
         if (incInfo) {
-            //Restrict External users to be added as secondary incident commander
-            if (this.state.incDetailsItem.selectedRole === constants.secondaryIncidentCommanderRole) {
-                if (selectedValue.detail.length > 0) {
-                    selectedValue.detail.forEach((user: any) => {
-                        if (user?.userPrincipalName.match("#EXT#") === null) {
-                            secIncCommanderUserHasRegexError = false;
-                            selectedUsersArr.push({
-                                displayName: user.displayName.replace(",", ""),
-                                userPrincipalName: user.userPrincipalName,
-                                id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                            });
-                            assignedUsersArray.push({
-                                "userName": user ? user.displayName.replace(",", "") : "",
-                                "userEmail": user ? user.userPrincipalName : "",
-                                "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                            });
-                        }
-                        else secIncCommanderUserHasRegexError = true
-                    });
-                }
-                else secIncCommanderUserHasRegexError = false;
-                incInfo["assignedUser"] = assignedUsersArray;
-            }
-            else {
-                secIncCommanderUserHasRegexError = false;
-                incInfo["assignedUser"] = selectedValue.detail.map((user: any) => {
-                    selectedUsersArr.push({
-                        displayName: user.displayName.replace(",", ""),
-                        userPrincipalName: user.userPrincipalName,
-                        id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                    });
-                    return {
-                        "userName": user ? user.displayName.replace(",", "") : "",
-                        "userEmail": user ? user.userPrincipalName : "",
-                        "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                    }
+            incInfo["assignedUser"] = selectedValue.detail.map((user: any) => {
+                selectedUsersArr.push({
+                    displayName: user.displayName.replace(",", ""),
+                    userPrincipalName: user.userPrincipalName,
+                    id: user.id
                 });
-            }
-
-            this.setState({
-                incDetailsItem: incInfo, selectedUsers: selectedUsersArr,
-                secIncCommanderUserHasRegexError: secIncCommanderUserHasRegexError
+                return {
+                    "userName": user ? user.displayName.replace(",", "") : "",
+                    "userEmail": user ? user.userPrincipalName : "",
+                    "userId": user ? user.id : "",
+                }
             });
-            //check the state to enable or disable the Add Role button
+
+            this.setState({ incDetailsItem: incInfo, selectedUsers: selectedUsersArr });
             this.checkAddRoleBtnState();
         }
     };
 
-    // Update Role Assigned Lead on change of Lead in role assignment people picker 
-    private handleAssignedLeadChange = (selectedValue: any) => {
+    // on assigned user change
+    private handleAssignedUserChangeInEditMode = (selectedValue: any) => {
         let incInfo = { ...this.state.incDetailsItem };
-        let secIncCommanderLeadHasRegexError = this.state.secIncCommanderLeadHasRegexError;
-        let assignedLeadArray: any = [];
-        const selectedRoleLead: any = [];
-        if (incInfo) {
-            //Restrict External users to be added as secondary incident commander
-            if (this.state.incDetailsItem.selectedRole === constants.secondaryIncidentCommanderRole) {
-                if (selectedValue.detail.length > 0) {
-                    selectedValue.detail.forEach((user: any) => {
-                        if (user?.userPrincipalName?.match("#EXT#") === null) {
-                            secIncCommanderLeadHasRegexError = false;
-                            selectedRoleLead.push({
-                                displayName: user.displayName.replace(",", ""),
-                                userPrincipalName: user.userPrincipalName,
-                                id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                            });
-                            assignedLeadArray.push({
-                                "userName": user ? user.displayName.replace(",", "") : "",
-                                "userEmail": user ? user.userPrincipalName : "",
-                                "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                            });
-                        }
-                        else secIncCommanderLeadHasRegexError = true
-                    });
-                    incInfo["assignedLead"] = assignedLeadArray;
-                }
-                else secIncCommanderLeadHasRegexError = false
-            }
-            else {
-                secIncCommanderLeadHasRegexError = false;
-                incInfo["assignedLead"] = selectedValue.detail.map((user: any) => {
-                    selectedRoleLead.push({
-                        displayName: user.displayName.replace(",", ""),
-                        userPrincipalName: user.userPrincipalName,
-                        id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                    });
-                    return {
-                        "userName": user ? user.displayName.replace(",", "") : "",
-                        "userEmail": user ? user.userPrincipalName : "",
-                        "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                    }
-                });
-            }
-
-            this.setState({
-                incDetailsItem: incInfo, selectedLead: selectedRoleLead,
-                secIncCommanderLeadHasRegexError: secIncCommanderLeadHasRegexError
-            });
-            //check the state to enable or disable the Add Role button
-            this.checkAddRoleBtnState();
-        }
-    };
-
-    // Update Role Assigned Lead on change of Lead in people picker from role assignment table
-    private handleAssignedLeadChangeInEditMode = (selectedValue: any, idx: number) => {
-        let incInfo = { ...this.state.incDetailsItem };
-        let secIncCommanderLeadInEditModeHasRegexError = this.state.secIncCommanderLeadInEditModeHasRegexError;
-        const selectedRoleLead: any = [];
-        let assignedLeadArray: any = [];
-        if (incInfo) {
-            //Restrict External users to be added as secondary incident commander
-            if (this.state.roleAssignments[idx].role === constants.secondaryIncidentCommanderRole) {
-                if (selectedValue.detail.length > 0) {
-                    selectedValue.detail.forEach((user: any) => {
-                        if (user?.userPrincipalName.match("#EXT#") === null) {
-                            secIncCommanderLeadInEditModeHasRegexError = false;
-                            selectedRoleLead.push({
-                                displayName: user.displayName.replace(",", ""),
-                                userPrincipalName: user.userPrincipalName,
-                                id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                            });
-                            assignedLeadArray.push({
-                                "userName": user ? user.displayName.replace(",", "") : "",
-                                "userEmail": user ? user.userPrincipalName : "",
-                                "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                            });
-                        }
-                        else secIncCommanderLeadInEditModeHasRegexError = true;
-                    });
-                }
-                else secIncCommanderLeadInEditModeHasRegexError = false
-                incInfo["assignedLead"] = assignedLeadArray;
-            }
-            else {
-                secIncCommanderLeadInEditModeHasRegexError = false
-                incInfo["assignedLead"] = selectedValue.detail.map((user: any) => {
-                    selectedRoleLead.push({
-                        displayName: user.displayName.replace(",", ""),
-                        userPrincipalName: user.userPrincipalName,
-                        id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                    });
-                    return {
-                        "userName": user ? user.displayName.replace(",", "") : "",
-                        "userEmail": user ? user.userPrincipalName : "",
-                        "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                    }
-                });
-            }
-
-            this.setState({
-                incDetailsItem: incInfo, selectedLeadInEditMode: selectedRoleLead,
-                secIncCommanderLeadInEditModeHasRegexError: secIncCommanderLeadInEditModeHasRegexError
-            });
-        }
-    };
-
-    // Update Role Assigned User on change of User in people picker from role assignment table
-    private handleAssignedUserChangeInEditMode = (selectedValue: any, idx: number) => {
-        let incInfo = { ...this.state.incDetailsItem };
-        let secIncCommanderUserInEditModeHasRegexError = this.state.secIncCommanderUserInEditModeHasRegexError;
         const selectedUsersArr: any = [];
-        let assignedUsersArray: any = [];
         if (incInfo) {
-            //Restrict External users to be added as secondary incident commander
-            if (this.state.roleAssignments[idx].role === constants.secondaryIncidentCommanderRole) {
-                if (selectedValue.detail.length > 0) {
-                    selectedValue.detail.forEach((user: any) => {
-                        if (user?.userPrincipalName.match("#EXT#") === null) {
-                            secIncCommanderUserInEditModeHasRegexError = false;
-                            selectedUsersArr.push({
-                                displayName: user.displayName.replace(",", ""),
-                                userPrincipalName: user.userPrincipalName,
-                                id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                            });
-                            assignedUsersArray.push({
-                                "userName": user ? user.displayName.replace(",", "") : "",
-                                "userEmail": user ? user.userPrincipalName : "",
-                                "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                            });
-                        }
-                        else secIncCommanderUserInEditModeHasRegexError = true
-                    });
-                }
-                else secIncCommanderUserInEditModeHasRegexError = false
-                incInfo["assignedUser"] = assignedUsersArray;
-            }
-            else {
-                secIncCommanderUserInEditModeHasRegexError = false;
-                incInfo["assignedUser"] = selectedValue.detail.map((user: any) => {
-                    selectedUsersArr.push({
-                        displayName: user.displayName.replace(",", ""),
-                        userPrincipalName: user.userPrincipalName,
-                        id: user.id.includes("@") ? user.id.split("@")[0] : user.id
-                    });
-                    return {
-                        "userName": user ? user.displayName.replace(",", "") : "",
-                        "userEmail": user ? user.userPrincipalName : "",
-                        "userId": user ? user.id.includes("@") ? user.id.split("@")[0] : user.id : "",
-                    }
+            incInfo["assignedUser"] = selectedValue.detail.map((user: any) => {
+                selectedUsersArr.push({
+                    displayName: user.displayName.replace(",", ""),
+                    userPrincipalName: user.userPrincipalName,
+                    id: user.id
                 });
-            }
-
-            this.setState({
-                incDetailsItem: incInfo, selectedUsersInEditMode: selectedUsersArr,
-                secIncCommanderUserInEditModeHasRegexError: secIncCommanderUserInEditModeHasRegexError
+                return {
+                    "userName": user ? user.displayName.replace(",", "") : "",
+                    "userEmail": user ? user.userPrincipalName : "",
+                    "userId": user ? user.id : "",
+                }
             });
+
+            this.setState({ incDetailsItem: incInfo, selectedUsersInEditMode: selectedUsersArr });
+            this.checkAddRoleBtnState();
         }
     };
 
@@ -1172,9 +795,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         let userDetailsObj: any = [];
         let userNameString = "";
         let userObjString = "";
-        let leadNameString = "";
-        let leadObjString = "";
-        let leadDetailsObj: any = [];
         // push roles into array to create role object
         this.state.incDetailsItem.assignedUser.forEach(assignedUser => {
             userNameString += assignedUser.userName + ", ";
@@ -1191,24 +811,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         userObjString = userObjString.trim();
         userObjString = userObjString.slice(0, -1);
 
-        this.state.incDetailsItem.assignedLead.forEach(assignedLead => {
-            leadNameString = assignedLead.userName;
-            leadObjString = assignedLead.userName + "|" + assignedLead.userId + "|" + assignedLead.userEmail;
-            leadDetailsObj.push({
-                userName: assignedLead.userName,
-                userEmail: assignedLead.userEmail,
-                userId: assignedLead.userId,
-            });
-        });
-
         roleAssignment.push({
             role: this.state.incDetailsItem.selectedRole,
             userNamesString: userNameString,
             userObjString: userObjString,
             userDetailsObj: userDetailsObj,
-            leadNameString: leadNameString,
-            leadObjString: leadObjString,
-            leadDetailsObj: leadDetailsObj,
             saveDefault: this.state.saveDefaultRoleCheck
         })
 
@@ -1227,16 +834,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             if (incInfo) {
                 incInfo["selectedRole"] = "";
                 this.setState({
-                    roleAssignments: roleAssignment,
-                    incDetailsItem: incInfo,
+                    roleAssignments: roleAssignment, incDetailsItem: incInfo,
                     isRoleInEditMode: isRoleInEditMode,
                     selectedUsers: [],
-                    selectedLead: [],
                     isAddRoleAssignmentBtnDisabled: true,
                     dropdownOptions: dropdownOptions,
-                    saveDefaultRoleCheck: false,
-                    secIncCommanderLeadHasRegexError: false,
-                    secIncCommanderUserHasRegexError: false
+                    saveDefaultRoleCheck: false
                 })
             }
         }
@@ -1294,7 +897,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         });
         const roles = [...this.state.roleAssignments];
         const selectedUserInRole: any = [];
-        const selectedLeadInRole: any = [];
         roles[itemIndex].userDetailsObj.forEach(user => {
             selectedUserInRole.push({
                 displayName: user.userName,
@@ -1303,22 +905,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             });
         });
 
-        if (roles[itemIndex].leadDetailsObj !== undefined) {
-            roles[itemIndex].leadDetailsObj.forEach(user => {
-                selectedLeadInRole.push({
-                    displayName: user.userName,
-                    userPrincipalName: user.userEmail,
-                    id: user.userId
-                });
-            });
-        }
-        this.setState({
-            isRoleInEditMode: isRoleInEditMode,
-            selectedUsersInEditMode: selectedUserInRole,
-            selectedLeadInEditMode: selectedLeadInRole,
-            secIncCommanderLeadInEditModeHasRegexError: false,
-            secIncCommanderUserInEditModeHasRegexError: false
-        });
+        this.setState({ isRoleInEditMode: isRoleInEditMode, selectedUsersInEditMode: selectedUserInRole });
     }
 
     // exit from edit mode in roles
@@ -1326,11 +913,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         const isRoleInEditMode = [...this.state.isRoleInEditMode];
         isRoleInEditMode[itemIndex] = false;
 
-        this.setState({
-            isRoleInEditMode: isRoleInEditMode,
-            secIncCommanderLeadInEditModeHasRegexError: false,
-            secIncCommanderUserInEditModeHasRegexError: false
-        });
+        this.setState({ isRoleInEditMode: isRoleInEditMode });
     }
 
     // update the role assignment array
@@ -1339,13 +922,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         let userDetailsObj: any = [];
         let userNameString = "";
         let userObjString = "";
-        let leadDetailsObj: any = [];
-        let leadNameString = "";
-        let leadObjString = "";
 
         // check if atleast one member is present for the role
         if (this.state.selectedUsersInEditMode.length > 0) {
-            // loop throught updated user object        
+            // loop throught updated user object
             this.state.selectedUsersInEditMode.forEach((users: any) => {
                 userNameString += users.displayName + ", ";
                 userObjString += users.displayName + "|" + users.id + "|" + users.userPrincipalName + ", ";
@@ -1362,24 +942,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             userObjString = userObjString.trim();
             userObjString = userObjString.slice(0, -1);
 
-            this.state.selectedLeadInEditMode.forEach((lead: any) => {
-                leadNameString = lead.displayName;
-                leadObjString = lead.displayName + "|" + lead.id + "|" + lead.userPrincipalName;
-                leadDetailsObj.push({
-                    userName: lead.displayName,
-                    userEmail: lead.userPrincipalName,
-                    userId: lead.id,
-                });
-            });
-
             roleAssignment[index] = {
                 role: roleAssignment[index].role,
                 userNamesString: userNameString,
                 userObjString: userObjString,
                 userDetailsObj: userDetailsObj,
-                leadNameString: leadNameString,
-                leadObjString: leadObjString,
-                leadDetailsObj: leadDetailsObj,
                 saveDefault: roleAssignment[index].saveDefault
             }
 
@@ -1390,8 +957,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 roleAssignments: roleAssignment,
                 isRoleInEditMode: isRoleInEditMode,
                 selectedUsersInEditMode: [],
-                secIncCommanderLeadInEditModeHasRegexError: false,
-                secIncCommanderUserInEditModeHasRegexError: false
             })
         }
         else {
@@ -1400,7 +965,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     }
 
-    // save or update default role
+    //method to save or update default role
     private createUpdateDefaultRoles = async () => {
         try {
             //check if role is already present
@@ -1412,8 +977,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         const roleObj: any = {
                             fields: {
                                 Title: item.role,
-                                Users: item.userObjString,
-                                RoleLead: item.leadObjString ? item.leadObjString : ""
+                                Users: item.userObjString
                             }
                         }
                         this.addDefaultRoles(roleObj);
@@ -1421,8 +985,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     else {
                         //update default role data
                         const updateRoleObj: any = {
-                            Users: item.userObjString,
-                            RoleLead: item.leadObjString ? item.leadObjString : ""
+                            Users: item.userObjString
                         }
                         this.updateDefaultRoles(updateRoleObj, duplicateCount[0].itemId);
                     }
@@ -1471,7 +1034,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     }
 
-    //set saveDefault for Role Assignment 
+    // method to set saveDefault for Role Assignment
     private onChecked = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, isChecked?: boolean, index?: any) => {
         try {
             let roleAssignment = this.state.roleAssignments;
@@ -1490,60 +1053,36 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     };
 
-    //save incidentType default roles
-    private saveIncidentTypeDefaultData = async (incidentType: any, roleAssignment: any, roleLead: any,
-        cloudStorageLink: string, additionalChannels?: string) => {
+    //method to save incidentType default roles
+    private saveIncidentTypeDefaultRoles = (incidentType: any, roleAssignment: any) => {
         try {
-            //check if edit mode & incident type default role data is present 
-            if (this.state.isEditMode && this.state.incidentTypeRoleDefaultData.length === 0 &&
-                (this.state.saveIncidentTypeDefaultRoleCheck || this.state.saveDefaultCloudStorageLink)) {
-                await this.getIncidentTypeDefaultData();
-            }
             let duplicateCount = this.state.incidentTypeRoleDefaultData.filter(e => e.incidentType === incidentType);
-
-            if (duplicateCount.length === 0) {
-                const newIncidentTypeDefaultDataObj: any = { fields: { Title: incidentType } };
-                if (this.state.saveIncidentTypeDefaultRoleCheck) {
-                    newIncidentTypeDefaultDataObj.fields.RoleAssignment = roleAssignment.trim();
-                    newIncidentTypeDefaultDataObj.fields.RoleLeads = roleLead ? roleLead.trim() : "";
+            if (this.state.saveIncidentTypeDefaultRoleCheck) {
+                if (duplicateCount.length === 0) {
+                    // add default roles for an Incident type
+                    const incidentTypeRoleObj: any = {
+                        fields: {
+                            Title: incidentType,
+                            RoleAssignment: roleAssignment.trim()
+                        }
+                    }
+                    this.addIncidentTypeDefaultRoles(incidentTypeRoleObj);
                 }
-                if (this.state.saveDefaultAdditionalChannels && this.state.toggleAdditionalChannels) {
-                    newIncidentTypeDefaultDataObj.fields.AdditionalChannels = additionalChannels;
-                }
-                if (this.state.saveDefaultCloudStorageLink && this.state.toggleCloudStorageLocation) {
-                    newIncidentTypeDefaultDataObj.fields.CloudStorageLink = cloudStorageLink?.trim();
-                }
-                if (this.state.saveIncidentTypeDefaultRoleCheck ||
-                    (this.state.saveDefaultAdditionalChannels && this.state.toggleAdditionalChannels) ||
-                    (this.state.saveDefaultCloudStorageLink && this.state.toggleCloudStorageLocation)) {
-                    this.addIncidentTypeDefaultRoles(newIncidentTypeDefaultDataObj);
-                }
-            }
-            else {
-                const updateIncidentTypeDefaultDataObj: any = {};
-                if (this.state.saveIncidentTypeDefaultRoleCheck) {
-                    updateIncidentTypeDefaultDataObj.RoleAssignment = roleAssignment.trim();
-                    updateIncidentTypeDefaultDataObj.RoleLeads = roleLead ? roleLead.trim() : "";
-                }
-                if (this.state.saveDefaultAdditionalChannels && this.state.toggleAdditionalChannels) {
-                    updateIncidentTypeDefaultDataObj.AdditionalChannels = additionalChannels?.trim();
-                }
-                if (this.state.saveDefaultCloudStorageLink && this.state.toggleCloudStorageLocation) {
-                    updateIncidentTypeDefaultDataObj.CloudStorageLink = cloudStorageLink?.trim();
-                }
-                if (this.state.saveIncidentTypeDefaultRoleCheck ||
-                    (this.state.saveDefaultAdditionalChannels && this.state.toggleAdditionalChannels) ||
-                    (this.state.saveDefaultCloudStorageLink && this.state.toggleCloudStorageLocation)) {
-                    this.updateIncidentTypeDefaultRoles(updateIncidentTypeDefaultDataObj, duplicateCount[0].itemId);
+                else {
+                    //update default role data for an Incident type
+                    const incidentTypeRoleObj: any = {
+                        RoleAssignment: roleAssignment.trim()
+                    }
+                    this.updateIncidentTypeDefaultRoles(incidentTypeRoleObj, duplicateCount[0].itemId);
                 }
             }
         } catch (ex) {
             console.error(
-                constants.errorLogPrefix + "CreateIncident_saveIncidentTypeDefaultData \n",
+                constants.errorLogPrefix + "CreateIncident_SaveIncidentTypeDefaultRoles \n",
                 JSON.stringify(ex)
             );
             // Log Exception
-            this.dataService.trackException(this.props.appInsights, ex, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_saveIncidentTypeDefaultData', this.props.userPrincipalName);
+            this.dataService.trackException(this.props.appInsights, ex, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_SaveIncidentTypeDefaultRoles', this.props.userPrincipalName);
 
         }
     }
@@ -1580,6 +1119,26 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     }
 
+    //on select save default roles checkbox
+    private onSaveDefaultRolesChecked = (ev?: React.FormEvent<HTMLElement | HTMLInputElement>, isChecked?: boolean) => {
+        try {
+            //check if edit mode & incident type default role data is present
+            if (this.state.isEditMode && this.state.incidentTypeRoleDefaultData.length === 0 && isChecked) {
+                this.getIncidentTypeDefaultRoles();
+            }
+            this.setState({ saveIncidentTypeDefaultRoleCheck: isChecked })
+        } catch (error) {
+            console.error(
+                constants.errorLogPrefix + "CreateIncident_SaveDefaultRolesChecked \n",
+                JSON.stringify(error)
+            );
+            // Log Exception
+            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_SaveDefaultRolesChecked', this.props.userPrincipalName);
+
+        }
+    }
+
+
     // create new entry in incident transaction list
     private createNewIncident = async () => {
         this.scrollToTop();
@@ -1592,7 +1151,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             loaderMessage: this.props.localeStrings.genericLoaderMessage,
             inputRegexValidation: this.dataService.getInputRegexValidationInitialState(),
             inputValidation: getInputValidationInitialState()
-        });
+        })
 
         // validate for required fields
         if (!this.requiredFieldValidation(incidentInfo)) {
@@ -1601,20 +1160,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         else {
             try {
                 // validate input strings for incident name and location
-                const regexValidation = this.dataService.regexValidation(incidentInfo, this.state.isEditMode);
-                if (regexValidation.inputRegexValidationObj.incidentLocationHasError ||
-                    regexValidation.inputRegexValidationObj.incidentNameHasError ||
-                    this.state.incDetailsItem.additionalTeamChannels.filter((channel: any) => channel.hasRegexError).length > 0 ||
-                    this.state.incCommanderHasRegexError ||
-                    (this.state.toggleCloudStorageLocation && regexValidation.inputRegexValidationObj.incidentCloudStorageLinkHasError) ||
-                    (this.state.toggleGuestUsers && regexValidation.guestUsers.filter((user: any) => user.hasEmailRegexError).length > 0)) {
+                const regexValidation = this.dataService.regexValidation(incidentInfo);
+                if (regexValidation.incidentLocationHasError || regexValidation.incidentNameHasError) {
                     this.props.showMessageBar(this.props.localeStrings.regexErrorMessage, constants.messageBarType.error);
                     this.setState({
-                        inputRegexValidation: regexValidation.inputRegexValidationObj,
-                        incDetailsItem: {
-                            ...this.state.incDetailsItem,
-                            guestUsers: regexValidation.guestUsers
-                        },
+                        inputRegexValidation: regexValidation,
                         showLoader: false,
                         formOpacity: 1
                     });
@@ -1624,13 +1174,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         this.setState({
                             loaderMessage: this.props.localeStrings.incidentCreationLoaderMessage
                         });
-                        // prepare the role assignment object which will be stored in 
+                        // prepare the role assignment object which will be stored in
                         // incident transaction list in string format
                         let roleAssignment = "";
-                        let roleLead = "";
                         this.state.roleAssignments.forEach(roles => {
                             roleAssignment += roles.role + " : " + roles.userObjString + "; ";
-                            roleLead += roles.leadObjString ? roles.role + " : " + roles.leadObjString + "; " : "";
                         });
 
                         // create object to be passed in graph query
@@ -1639,55 +1187,55 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 Title: incidentInfo.incidentName,
                                 Description: incidentInfo.incidentDesc,
                                 IncidentType: incidentInfo.incidentType,
-                                StatusLookupId: incidentInfo.incidentStatus.id,
+                                IncidentStatus: incidentInfo.incidentStatus,
+                                TeamId: "",
                                 StartDateTime: incidentInfo.startDateTime,
                                 Location: incidentInfo.location,
                                 IncidentName: incidentInfo.incidentName,
                                 RoleAssignment: roleAssignment.trim(),
-                                RoleLeads: roleLead.trim(),
                                 IncidentCommander: incidentInfo.incidentCommander.userName + "|" + incidentInfo.incidentCommander.userId + "|" + incidentInfo.incidentCommander.userEmail + ";",
-                                Severity: constants.severity[this.state.selectedSeverity],
-                                CloudStorageLink: this.state.toggleCloudStorageLocation ? incidentInfo.cloudStorageLink.trim() : ""
+                                Severity: constants.severity[this.state.selectedSeverity]
                             }
                         }
 
                         this.graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}${graphConfig.listsGraphEndpoint}/${siteConfig.incidentsList}/items`;
-                        this.setState({
-                            loaderMessage: this.props.localeStrings.createIncidentLoaderMessage
-                        });
+
                         const incidentAdded = await this.dataService.sendGraphPostRequest(this.graphEndpoint, this.props.graph, incidentInfoObj);
 
                         // check if incident is created
                         if (incidentAdded) {
-                            console.log(constants.infoLogPrefix + "Incident item created");
+                            console.log(constants.infoLogPrefix + "Incident Created");
 
                             //call method to add/update default roles
                             this.createUpdateDefaultRoles();
 
-                            //format additional channels into a single string to store 
-                            //in IncidentTypeDefaultRoles list
-                            let additionalChannels = "";
-                            if (this.state.toggleAdditionalChannels && this.state.saveDefaultAdditionalChannels) {
-                                additionalChannels = this.state.incDetailsItem.additionalTeamChannels
-                                    .map((channel: IAdditionalTeamChannels) => channel.channelName.trim())
-                                    .filter((channelName: string) => channelName !== "").join(", ");
-                            }
-
-                            //format cloud storage link
-                            let cloudStorageLink = "";
-                            if (this.state.toggleCloudStorageLocation && this.state.saveDefaultCloudStorageLink) {
-                                cloudStorageLink = this.state.incDetailsItem.cloudStorageLink.trim()
-                            }
                             //call method to add/update incident type role default values
-                            this.saveIncidentTypeDefaultData(incidentInfo.incidentType, roleAssignment,
-                                roleLead, cloudStorageLink, additionalChannels);
+                            this.saveIncidentTypeDefaultRoles(incidentInfo.incidentType, roleAssignment);
 
                             //log trace
-                            this.dataService.trackTrace(this.props.appInsights, 'Incident item created ', incidentAdded.id, this.props.userPrincipalName);
+                            this.dataService.trackTrace(this.props.appInsights, 'Incident Created ', incidentAdded.id, this.props.userPrincipalName);
                             try {
-                                //method to create teams and channels and other related functionalities
-                                await this.createTeamAndChannels(incidentAdded.id);
+                                // call method to update the incident id with custom value
+                                const incUpdated = await this.updatedIncidentId(incidentAdded.id);
 
+                                if (incUpdated) {
+                                    console.log(constants.infoLogPrefix + "Incident Id Updated");
+                                    //log trace
+                                    this.dataService.trackTrace(this.props.appInsights, 'Incident Id Updated', incidentAdded.id, this.props.userPrincipalName);
+                                    // call the wrapper method to perform Teams related operations
+                                    await this.createTeamAndChannels(incUpdated.IncidentId, incidentAdded.id);
+                                }
+                                else {
+                                    // delete the incident if incident id updation fails
+                                    await this.deleteIncident(incidentAdded.id);
+                                    //log trace
+                                    this.dataService.trackTrace(this.props.appInsights, 'Incident Id Update Failed', incidentAdded.id, this.props.userPrincipalName);
+                                    this.setState({
+                                        showLoader: false,
+                                        formOpacity: 1
+                                    });
+                                    this.props.showMessageBar(this.props.localeStrings.genericErrorMessage + ", " + this.props.localeStrings.errMsgForCreateIncident, constants.messageBarType.error);
+                                }
                             } catch (error) {
                                 console.error(
                                     constants.errorLogPrefix + "CreateIncident_CreateNewIncident \n",
@@ -1750,7 +1298,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             loaderMessage: this.props.localeStrings.genericLoaderMessage,
             inputRegexValidation: this.dataService.getInputRegexValidationInitialState(),
             inputValidation: getInputValidationInitialState()
-        });
+        })
 
         // validate for required fields
         if (!this.requiredFieldValidation(incidentInfo)) {
@@ -1759,19 +1307,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         else {
             try {
                 // validate input strings for incident name and location
-                const regexValidation = this.dataService.regexValidation(incidentInfo, this.state.isEditMode);
-                if (regexValidation.inputRegexValidationObj.incidentLocationHasError ||
-                    regexValidation.inputRegexValidationObj.incidentNameHasError ||
-                    this.state.incCommanderHasRegexError ||
-                    (this.state.toggleCloudStorageLocation && regexValidation.inputRegexValidationObj.incidentCloudStorageLinkHasError) ||
-                    (this.state.toggleGuestUsers && regexValidation.guestUsers.filter((user: any) => user.hasEmailRegexError).length > 0)) {
+                const regexValidation = this.dataService.regexValidation(incidentInfo);
+                if (regexValidation.incidentLocationHasError || regexValidation.incidentNameHasError) {
                     this.props.showMessageBar(this.props.localeStrings.regexErrorMessage, constants.messageBarType.error);
                     this.setState({
-                        inputRegexValidation: regexValidation.inputRegexValidationObj,
-                        incDetailsItem: {
-                            ...this.state.incDetailsItem,
-                            guestUsers: regexValidation.guestUsers
-                        },
+                        inputRegexValidation: regexValidation,
                         showLoader: false,
                         formOpacity: 1
                     });
@@ -1781,61 +1321,38 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         this.setState({
                             loaderMessage: this.props.localeStrings.incidentCreationLoaderMessage
                         });
-                        // prepare the role assignment object which will be stored in 
+                        // prepare the role assignment object which will be stored in
                         // incident transaction list in string format
                         let roleAssignment = "";
-                        let roleLead = "";
                         this.state.roleAssignments.forEach(roles => {
                             roleAssignment += roles.role + " : " + roles.userObjString + "; ";
-                            roleLead += roles.leadObjString ? roles.role + " : " + roles.leadObjString + "; " : "";
                         });
-
 
                         // create object to be passed in graph query
                         const incidentInfoObj: any = {
                             Description: incidentInfo.incidentDesc,
-                            StatusLookupId: incidentInfo.incidentStatus.id,
+                            IncidentStatus: incidentInfo.incidentStatus,
                             Location: incidentInfo.location,
                             IncidentName: incidentInfo.incidentName,
                             IncidentCommander: incidentInfo.incidentCommander.userName + "|" + incidentInfo.incidentCommander.userId + "|" + incidentInfo.incidentCommander.userEmail,
                             RoleAssignment: roleAssignment.trim(),
-                            RoleLeads: roleLead.trim(),
                             Severity: constants.severity[this.state.selectedSeverity],
-                            ReasonForUpdate: incidentInfo.reasonForUpdate,
-                            CloudStorageLink: this.state.toggleCloudStorageLocation ? incidentInfo.cloudStorageLink.trim() : ""
+                            ReasonForUpdate: incidentInfo.reasonForUpdate
                         }
 
                         this.graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${this.state.incDetailsItem.incidentId}/fields`;
-                        this.setState({
-                            loaderMessage: this.props.localeStrings.createIncidentLoaderMessage
-                        });
+
                         const incidentUpdated = await this.dataService.updateItemInList(this.graphEndpoint, this.props.graph, incidentInfoObj);
 
                         // check if incident is updated
                         if (incidentUpdated) {
                             let incDetails = this.state.incDetailsItem;
 
-                            //Invite Guest Users
-                            let returnInvitationObj: any;
-                            if (this.state.toggleGuestUsers) {
-                                const teamEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId;
-                                const teamObj = await this.dataService.getGraphData(teamEndpoint, this.props.graph);
-                                returnInvitationObj = this.sendInvitation(this.state.teamGroupId, teamObj.displayName,
-                                    this.props.incidentData?.teamWebURL ? this.props.incidentData?.teamWebURL : "");
-                            }
-
-
                             //call method to add/update default roles
                             this.createUpdateDefaultRoles();
 
-                            //format cloud storage link
-                            let cloudStorageLink = "";
-                            if (this.state.toggleCloudStorageLocation && this.state.saveDefaultCloudStorageLink) {
-                                cloudStorageLink = this.state.incDetailsItem.cloudStorageLink.trim();
-                            }
-
                             //call method to add/update incident type role default values
-                            this.saveIncidentTypeDefaultData(incidentInfo.incidentType, roleAssignment, roleLead, cloudStorageLink);
+                            this.saveIncidentTypeDefaultRoles(incidentInfo.incidentType, roleAssignment);
 
                             // update the date format
                             incDetails.startDateTime = moment(this.state.incDetailsItem.startDateTime).format("DDMMMYYYY");
@@ -1843,32 +1360,16 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                             // update team display name
                             let teamDisplayName = this.formatTeamDisplayName(this.state.incDetailsItem.incidentId, this.state.incDetailsItem);
                             this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId;
-                            await this.dataService.sendGraphPatchRequest(this.graphEndpoint, this.props.graph, { "displayName": teamDisplayName })
+                            await this.dataService.updateTeamsDisplayName(this.graphEndpoint, this.props.graph, { "displayName": teamDisplayName })
 
                             const usersObj = this.compareTeamsMembership(this.props.existingTeamMembers);
 
-                            // Get all existing tags
-                            let existingTagsList = await this.getAllTags();
-
+                            // check if incident commander has changed
                             if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
+                                usersObj.newAddedUsers = usersObj.newAddedUsers.filter((addedUser: any) => addedUser.userId !== this.state.incDetailsItem.incidentCommander.userId);
+
                                 // Add incident commander as owner
                                 await this.addUsersToTeam([this.state.incDetailsItem.incidentCommander], true);
-
-                                // add incident commander to tag
-                                await this.addUsersToTag([this.state.incDetailsItem.incidentCommander.userId], existingTagsList.value, true);
-
-                            }
-
-                            // check if there are users to remove
-                            if (usersObj.removedMembershipIds.length > 0) {
-                                // remove users from Team
-                                await this.removeUsersFromTeam(usersObj.removedMembershipIds, true);
-                            }
-
-                            // check if there are secondary commanders to add
-                            if (usersObj.newSecondaryIncidentCommanders.length > 0) {
-                                // add secondary incident commanders as owners
-                                await this.addUsersToTeam(usersObj.newSecondaryIncidentCommanders, true);
                             }
 
                             // check if there are users to add
@@ -1877,14 +1378,13 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 await this.addUsersToTeam(usersObj.newAddedUsers, false);
                             }
 
-                            // Get all tags after the membership is updated on team
+                            // Get all existing tags
                             let tagsList = await this.getAllTags();
-
                             // check and get if new tags needs to be created
                             const newRole = this.checkIfNewTagCreationNeeded(tagsList.value);
 
                             if (newRole.length > 0) {
-                                // create the role object from role assignments needed for tag creation
+                                // create the role object from role assignements needed for tag creation
                                 const roles = this.createNewRoleObject(newRole);
                                 // create the tag for new role
                                 await this.createTagObject(this.state.teamGroupId, roles);
@@ -1895,34 +1395,32 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                 roles.userDetailsObj.forEach(users => {
                                     usersForTags.push({ role: roles.role, userId: users.userId });
                                 })
-                                if (roles.leadDetailsObj !== undefined) {
-                                    roles.leadDetailsObj.forEach(lead => {
-                                        usersForTags.push({ role: roles.role, userId: lead.userId });
-                                    })
-                                }
-                            });
+                            })
                             await this.addUsersToTag(usersForTags, tagsList.value, false);
+
+                            if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
+                                // add incident commander to tag
+                                await this.addUsersToTag([this.state.incDetailsItem.incidentCommander.userId], tagsList.value, true);
+
+                                // Remove old incident commander
+                                await this.removeUsersFromTeam(usersObj.removeIncCommander);
+                            }
+
+                            // check if there are users to remove
+                            if (usersObj.removedMembershipIds.length > 0) {
+                                // remove users from Team
+                                await this.removeUsersFromTeam(usersObj.removedMembershipIds);
+                            }
 
                             console.log(constants.infoLogPrefix + "Incident Updated");
                             //log trace
                             this.dataService.trackTrace(this.props.appInsights, 'Incident Updated', this.state.incDetailsItem.incidentId, this.props.userPrincipalName);
-                            Promise.allSettled([returnInvitationObj]).then((promiseObj: any) => {
-                                this.setState({
-                                    showLoader: false,
-                                    formOpacity: 1
-                                });
-
-                                // Display success message if incident updated successfully
-                                this.props.showMessageBar(this.props.localeStrings.updateSuccessMessage,
-                                    constants.messageBarType.success);
-                                // Display error message if send invitation fails
-                                if ((promiseObj[0]?.value !== undefined && !promiseObj[0].value?.isAllSucceeded))
-                                    this.props.showMessageBar(
-                                        ((promiseObj[0]?.value !== undefined && !promiseObj[0]?.value?.isAllSucceeded) ? " " + promiseObj[0]?.value?.message : ""),
-                                        constants.messageBarType.error);
-                                this.props.onBackClick(constants.messageBarType.success);
+                            this.setState({
+                                showLoader: false,
+                                formOpacity: 1
                             });
-
+                            this.props.showMessageBar(this.props.localeStrings.updateSuccessMessage, constants.messageBarType.success);
+                            this.props.onBackClick(true);
                         }
                         else {
                             this.setState({
@@ -1970,7 +1468,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         if (incidentInfo.startDateTime === "" || incidentInfo.startDateTime === undefined) {
             inputValidationObj.incidentStartDateTimeHasError = true;
         }
-        if (incidentInfo.incidentStatus.status === "" || incidentInfo.incidentStatus === undefined) {
+        if (incidentInfo.incidentStatus === "" || incidentInfo.incidentStatus === undefined) {
             inputValidationObj.incidentStatusHasError = true;
         }
         if (incidentInfo.location === "" || incidentInfo.location === undefined ||
@@ -1989,41 +1487,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             inputValidationObj.incidentReasonForUpdateHasError = true;
         }
 
-        if (this.state.toggleCloudStorageLocation && (incidentInfo.cloudStorageLink?.trim() === "" ||
-            incidentInfo.cloudStorageLink === undefined)) {
-            inputValidationObj.cloudStorageLinkHasError = true;
-        }
-
-        if (this.state.toggleGuestUsers && (incidentInfo.guestUsers?.filter((user: IGuestUsers) =>
-            user.displayName.trim() !== "" && user.email.trim() !== "")).length === 0) {
-            inputValidationObj.guestUsersHasError = true;
-        }
-
-        const guestUsers = incidentInfo.guestUsers;
-        if (this.state.toggleGuestUsers) {
-            guestUsers?.forEach((user: IGuestUsers, idx: number) => {
-                if (user.email.trim() !== "" && user.displayName.trim() === "")
-                    guestUsers[idx].hasDisplayNameValidationError = true
-                else guestUsers[idx].hasDisplayNameValidationError = false
-                if (user.email.trim() === "" && user.displayName.trim() !== "")
-                    guestUsers[idx].hasEmailValidationError = true;
-                else guestUsers[idx].hasEmailValidationError = false
-            });
-        }
-
         if (inputValidationObj.incidentNameHasError || inputValidationObj.incidentTypeHasError ||
             inputValidationObj.incidentStartDateTimeHasError || inputValidationObj.incidentStatusHasError ||
             inputValidationObj.incidentLocationHasError || inputValidationObj.incidentDescriptionHasError ||
-            inputValidationObj.incidentCommandarHasError || inputValidationObj.incidentReasonForUpdateHasError ||
-            inputValidationObj.cloudStorageLinkHasError || inputValidationObj.guestUsersHasError ||
-            (incidentInfo.guestUsers?.filter((user) =>
-                (user.hasDisplayNameValidationError || user.hasEmailValidationError)).length > 0)) {
+            inputValidationObj.incidentCommandarHasError || inputValidationObj.incidentReasonForUpdateHasError) {
             this.setState({
                 inputValidation: inputValidationObj,
-                incDetailsItem: {
-                    ...this.state.incDetailsItem,
-                    guestUsers: incidentInfo.guestUsers !== undefined ? [...guestUsers] : []
-                },
                 showLoader: false,
                 formOpacity: 1
             });
@@ -2053,133 +1522,107 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         }
     }
 
-
-    //delay the operation by adding timeout
+    // method to delay the operation by adding timeout
     private timeout = (delay: number): Promise<any> => {
         return new Promise(res => setTimeout(res, delay));
     }
 
     // wrapper method to perform teams related operations
-    private async createTeamAndChannels(incidentId: any) {
-        try {
-            console.log(constants.infoLogPrefix + "M365 group creation starts");
+    private async createTeamAndChannels(incidentId: any, listItemId: number): Promise<any> {
+        return new Promise(async (resolve, reject) => {
+            // response object for Teams creation
+            let teamCreationResult: ITeamCreatedResponse = this.getITeamCreatedResponseDefaultValue();
+
+            console.log(constants.infoLogPrefix + "Teams group creation start");
             // call method to create Teams group
             this.createTeamGroup(incidentId).then(async (groupInfo) => {
                 try {
-                    console.log(constants.infoLogPrefix + "M365 group created");
+                    console.log(constants.infoLogPrefix + "Teams group created on - " + new Date());
+                    //log trace
+                    this.dataService.trackTrace(this.props.appInsights, "Teams group created ", incidentId, this.props.userPrincipalName);
+                    // wait for 2 seconds to ensure team group is available via graph API
+                    await this.timeout(2000);
 
                     // create associated team with the group
                     const teamInfo = await this.createTeam(groupInfo);
                     if (teamInfo.status) {
+                        console.log(constants.infoLogPrefix + "Teams created on - " + new Date());
                         //log trace
-                        this.dataService.trackTrace(this.props.appInsights, "Incident Team created ", incidentId, this.props.userPrincipalName);
-
-                        //Send invitations to the guest users
-                        let returnInvitationObj: any;
-                        if (this.state.toggleGuestUsers)
-                            returnInvitationObj = this.sendInvitation(groupInfo.id, teamInfo.data.displayName, teamInfo.data.webUrl)
-
+                        this.dataService.trackTrace(this.props.appInsights, "Teams created ", incidentId, this.props.userPrincipalName);
                         // create channels
-                        await this.createChannels(teamInfo.data);
-
-                        this.setState({ loaderMessage: this.props.localeStrings.createPlanloaderMessage });
-
-                        //Get General channel id
-                        const generalChannelId = await this.dataService.getChannelId(this.props.graph,
-                            groupInfo.id, constants.General);
-
-                        //Create planner with the Group ID                        
-                        const planID = await this.dataService.createPlannerPlan(groupInfo.id, incidentId, this.props.graph,
-                            this.props.graphContextURL, this.props.tenantID, generalChannelId, false);
-
-                        //Add TEOC app to the Incident Team General channel's Active Dashboard Tab
-                        await this.dataService.createActiveDashboardTab(this.props.graph, groupInfo.id,
-                            generalChannelId, this.props.graphContextURL, this.props.appSettings);
-
-                        //added for GCCH tenant
-                        if (this.props.graphBaseUrl !== constants.defaultGraphBaseURL) {
-                            // wait for 5 seconds to ensure the SharePoint site is available via graph API
-                            await this.timeout(5000);
-                        }
-
-                        // graph endpoint to get team site Id
-                        const teamSiteURLGraphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" +
-                            groupInfo.id + graphConfig.rootSiteGraphEndpoint;
-
-                        // retrieve team site details
-                        const teamSiteDetails = await this.dataService.getGraphData(teamSiteURLGraphEndpoint, this.props.graph);
-
-                        //get the team site managed path
-                        const teamSiteManagedPathURL = teamSiteDetails.webUrl.split(teamSiteDetails.siteCollection.hostname)[1];
-                        console.log(constants.infoLogPrefix + "Site ManagedPath", teamSiteManagedPathURL);
-
-                        // create news channel and tab
-                        const newsTabLink = await this.createNewsTab(groupInfo, teamSiteDetails.webUrl, teamSiteManagedPathURL);
+                        const channelCreatedInfo: any = await this.createChannels(teamInfo.data);
+                        console.log(constants.infoLogPrefix + "channels created");
+                        //log trace
+                        this.dataService.trackTrace(this.props.appInsights, "Channel created ", incidentId, this.props.userPrincipalName);
+                        const siteURL = "https://" + this.props.tenantName + "/sites/" + groupInfo.mailNickname;
 
                         // create assessment channel and tab
-                        await this.createAssessmentChannelAndTab(groupInfo.id, teamSiteDetails.webUrl, teamSiteManagedPathURL);
+                        await this.createAssessmentChannelAndTab(groupInfo.id, siteURL, groupInfo.mailNickname);
+
+                        console.log(constants.infoLogPrefix + "Assessment Channel and tab created");
+                        //log trace
+                        this.dataService.trackTrace(this.props.appInsights, "Assessment Channel and tab created ", incidentId, this.props.userPrincipalName);
+                        const siteBaseURL = "https://" + this.props.tenantName + "/sites/";
+
+                        // create news channel and tab
+                        await this.createNewsTab(groupInfo, siteBaseURL);
+                        console.log(constants.infoLogPrefix + "News tab created");
+                        //log trace
+                        this.dataService.trackTrace(this.props.appInsights, "News tab create ", incidentId, this.props.userPrincipalName);
+
+                        // create URL to get site Id
+                        const urlForSiteId = graphConfig.spSiteGraphEndpoint + this.props.tenantName + ":/sites/" + groupInfo.mailNickname + "?$select=id";
+
+                        const siteDetails = await this.dataService.getGraphData(urlForSiteId, this.props.graph);
+                        console.log(constants.infoLogPrefix + "Site details retrieved");
 
                         // call method to create assessment list
-                        await this.createAssessmentList(groupInfo.mailNickname, teamSiteDetails.id);
-
+                        await this.createAssessmentList(groupInfo.mailNickname, siteDetails.id);
+                        console.log(constants.infoLogPrefix + "Assessment list created");
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Assessment list created ", incidentId, this.props.userPrincipalName);
 
-                        //change the M365 group visibility to Private for GCCH tenant
-                        if (this.props.graphBaseUrl !== constants.defaultGraphBaseURL) {
-                            this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
-                            await this.dataService.sendGraphPatchRequest(this.graphEndpoint, this.props.graph, { "visibility": "Private" })
-                            console.log(constants.infoLogPrefix + "Group setting changed to Private");
+                        const updateItemObj = {
+                            TeamId: teamInfo.id,
+                            TeamWebURL: teamInfo.data.webUrl
                         }
 
-                        //Update Team details, Plan ID, NewsTabLink in Incident Transation List                                   
-                        const updateItemObj = {
-                            IncidentId: incidentId,
-                            TeamWebURL: teamInfo.data.webUrl,
-                            PlanID: planID,
-                            NewsTabLink: newsTabLink
-                        };
+                        await this.updatedTeamIdInList(listItemId, updateItemObj);
+                        console.log(constants.infoLogPrefix + "List item updated with Team Id");
 
-                        await this.updateIncidentItemInList(incidentId, updateItemObj);
-                        console.log(constants.infoLogPrefix + "List item updated");
+                        //log trace
+                        this.dataService.trackTrace(this.props.appInsights, "List item updated with Team Id ", incidentId, this.props.userPrincipalName);
 
                         let roles: any = this.state.roleAssignments;
                         roles.push({
                             role: constants.incidentCommanderRoleName,
                             userNamesString: this.state.incDetailsItem.incidentCommander.userName,
                             userDetailsObj: [this.state.incDetailsItem.incidentCommander]
-                        });
-
-                        //post incident message in General Channel
-                        await this.postIncidentMessage(groupInfo.id);
-
-                        // create the tags for incident commander and each selected roles                        
+                        })
+                        // create the tags for incident commander and each selected roles
                         await this.createTagObject(teamInfo.data.id, roles);
+
+                        // update the results object
+                        teamCreationResult.fullyDone = (channelCreatedInfo.is_fully_created ? true : false);
+                        teamCreationResult.partiallyDone = !(channelCreatedInfo.is_fully_created);
+                        teamCreationResult.error.channelCreations = channelCreatedInfo;
+                        teamCreationResult.teamInfo = groupInfo;
+
                         //log trace
                         this.dataService.trackTrace(this.props.appInsights, "Tags are created ", incidentId, this.props.userPrincipalName);
-                        Promise.allSettled([returnInvitationObj]).then((promiseObj: any) => {
-                            this.setState({
-                                showLoader: false,
-                                formOpacity: 1
-                            });
 
-                            // Display success message if incident updated successfully
-                            this.props.showMessageBar(this.props.localeStrings.incidentCreationSuccessMessage, constants.messageBarType.success);
-
-                            // Display error message if guest invitations
-                            if ((promiseObj[0]?.value !== undefined && !promiseObj[0].value?.isAllSucceeded))
-                                this.props.showMessageBar(
-                                    ((promiseObj[0]?.value !== undefined && !promiseObj[0]?.value?.isAllSucceeded) ? " " + promiseObj[0]?.value?.message + ". " : ""),
-                                    constants.messageBarType.error);
-                            this.props.onBackClick(constants.messageBarType.success);
-                        });
-
+                        this.setState({
+                            showLoader: false,
+                            formOpacity: 1
+                        })
+                        this.props.showMessageBar(this.props.localeStrings.incidentCreationSuccessMessage, constants.messageBarType.success);
+                        this.props.onBackClick(true);
                     }
                     else {
                         // delete the group if some error occured
                         await this.deleteTeamGroup(groupInfo.id);
                         // delete the item if error occured
-                        await this.deleteIncident(incidentId);
+                        await this.deleteIncident(listItemId);
 
                         this.setState({
                             showLoader: false,
@@ -2187,8 +1630,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         })
                         this.props.showMessageBar(this.props.localeStrings.genericErrorMessage + ", " + this.props.localeStrings.errMsgForCreateIncident, constants.messageBarType.error);
                     }
-                }
-                catch (error) {
+                } catch (error) {
                     console.error(
                         constants.errorLogPrefix + "CreateIncident_createTeamAndChannels \n",
                         JSON.stringify(error)
@@ -2198,7 +1640,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     // delete the group if some error occured
                     await this.deleteTeamGroup(groupInfo.id);
                     // delete the item if error occured
-                    await this.deleteIncident(incidentId);
+                    await this.deleteIncident(listItemId);
 
                     this.setState({
                         showLoader: false,
@@ -2206,326 +1648,65 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     })
                     this.props.showMessageBar(this.props.localeStrings.genericErrorMessage + ", " + this.props.localeStrings.errMsgForCreateIncident, constants.messageBarType.error);
                 }
-            });
-        }
-        catch (error) {
-            console.error(
-                constants.errorLogPrefix + "CreateIncident_createTeamAndChannels \n",
-                JSON.stringify(error)
-            );
-            // Log Exception
-            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_createTeamAndChannels', this.props.userPrincipalName);
-
-            // delete the item if error occured
-            this.deleteIncident(incidentId);
-
-            this.setState({
-                showLoader: false,
-                formOpacity: 1
-            });
-            this.props.showMessageBar(this.props.localeStrings.genericErrorMessage + ", " + this.props.localeStrings.errMsgForCreateIncident, constants.messageBarType.error);
-        }
-    }
-
-    //Send invitation to guest users
-    private async sendInvitation(teamId: string, teamName: string, teamWebURL: string): Promise<any> {
-        const returnInvitationObj = {
-            isAllSucceeded: true,
-            message: ""
-        }
-        return new Promise<any>(async (resolve: any) => {
-            try {
-                this.setState({
-                    loaderMessage: this.props.localeStrings.createInvitationLoaderMessage
-                });
-
-                let guestIds: any[] = [];
-
-                //Removing duplicates and Filtering valid Guest users email and display name 
-                const validGuestUsers = this.state.incDetailsItem.guestUsers.filter((user, index, self) =>
-                (user.email.trim() !== "" && user.displayName.trim() !== "" &&
-                    index === self.findIndex((userData) => userData.email.trim().toLocaleLowerCase() === user.email.trim().toLocaleLowerCase())));
-
-                //Getting Incident Team Members Data
-                const groupMembersEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + teamId + graphConfig.membersGraphEndpoint;
-                const teamGroupMembers = await this.dataService.getGraphData(groupMembersEndpoint, this.props.graph);
-
-                const addMemberEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + teamId + "/members/$ref";
-
-                //Send guest user invitations
-                guestIds = await Promise.allSettled(validGuestUsers.map(async (user: IGuestUsers) => {
-                    let inviteRequest = {
-                        "invitedUserEmailAddress": user.email.trim(),
-                        "invitedUserDisplayName": user.displayName.trim(),
-                        "inviteRedirectUrl": this.props.graphBaseUrl !== constants.defaultGraphBaseURL ? constants.teamsWebUrlGCCH : constants.teamsWebUrl
-                    }
-                    try {
-                        //Adding guest users to Azure
-                        const res = await this.dataService.sendGraphPostRequest(graphConfig.invitationsGraphEndpoint, this.props.graph, inviteRequest);
-                        const isUserNotExistsInTeam = teamGroupMembers?.value?.findIndex((member: any) => member?.id === res.invitedUser.id) === -1;
-                        if (isUserNotExistsInTeam) {
-                            //Adding guest users to Office 365 group
-                            const userToAdd = {
-                                "@odata.id": this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + res.invitedUser.id
-                            }
-                            await this.dataService.sendGraphPostRequest(addMemberEndpoint, this.props.graph, userToAdd);
-                            console.log(constants.infoLogPrefix + "Guest user ", user.email, " added to group");
-                            //Sending invitation mails to guest users
-                            const mailObj = this.getEmailTemplate(teamName, this.state.incDetailsItem.incidentDesc.trim(),
-                                teamWebURL, user.email);
-                            const mailEndpoint = graphConfig.emailInvitationsGraphEndpoint;
-                            await this.dataService.sendGraphPostRequest(mailEndpoint, this.props.graph, mailObj);
-                        }
-                        return { userId: res.invitedUser.id, email: user.email.trim() };
-                    }
-                    catch (err: any) {
-                        console.log(err);
-                        return { email: user.email.trim(), statusCode: err.statusCode };
-                    }
-                }));
-
-                let blockedEntries: any = [];
-                let isGuestInviteAccessDenied: boolean = false;
-
-                //get valid user urls to add them to M365 group
-                guestIds.forEach((user: any) => {
-                    if (isGuestInviteAccessDenied) return
-                    if (user?.value?.userId === undefined) {
-                        if (user?.value?.statusCode !== 403) {
-                            if (user?.value?.statusCode === 400) blockedEntries.push(user?.value?.email);
-                        }
-                        else isGuestInviteAccessDenied = true
-                    }
-                });
-
-                if (isGuestInviteAccessDenied) {
-                    returnInvitationObj.isAllSucceeded = false;
-                    returnInvitationObj.message = this.props.localeStrings.guestInvitesAccessDeniedError;
-                }
-                else if (blockedEntries.length > 0) {
-                    returnInvitationObj.isAllSucceeded = false;
-                    returnInvitationObj.message = this.props.localeStrings.guestInvitesBlockedUserError + " : " + blockedEntries.join(", ");
-                }
-                else returnInvitationObj.isAllSucceeded = true
-
-                resolve(returnInvitationObj);
-            }
-            catch (error) {
+            }).catch((error) => {
                 console.error(
-                    constants.errorLogPrefix + "CreateIncident_sendInvitation \n",
+                    constants.errorLogPrefix + "CreateIncident_createTeamAndChannels \n",
                     JSON.stringify(error)
                 );
                 // Log Exception
-                this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_sendInvitation', this.props.userPrincipalName);
-                returnInvitationObj.isAllSucceeded = false;
-                returnInvitationObj.message = this.props.localeStrings.guestInvitesBlockedUserError;
-                resolve(returnInvitationObj);
+                this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_createTeamAndChannels', this.props.userPrincipalName);
+
+                // delete the item if error occured
+                this.deleteIncident(listItemId);
+
+                this.setState({
+                    showLoader: false,
+                    formOpacity: 1
+                });
+                this.props.showMessageBar(this.props.localeStrings.genericErrorMessage + ", " + this.props.localeStrings.errMsgForCreateIncident, constants.messageBarType.error);
+            });
+        })
+    }
+
+    // Initialize the Teams creation response object
+    private getITeamCreatedResponseDefaultValue(): ITeamCreatedResponse {
+        let _result: ITeamCreatedResponse = {
+            fullyDone: false,
+            partiallyDone: false,
+            allFailed: false,
+            teamInfo: "",
+            error: {
+                channelCreations: [],
+                appInstallation: [],
+                memberCreations: [],
+                allFail: []
             }
-        });
+        };
+        return _result;
     }
 
-    //Get Email template to send invitation to guest users
-    private getEmailTemplate(teamName: string, teamDescription: string, teamWebUrl: string,
-        userMailId: string) {
-        return ({
-            message: {
-                subject: 'You have been added to a team in Microsoft Teams',
-                body: {
-                    contentType: 'HTML',
-                    content: renderToStaticMarkup(
-                        <table style={{ marginLeft: "auto", marginRight: "auto" }}>
-                            <td style={{
-                                backgroundColor: "#EEF1F5", borderTop: "4px solid #4F52B2", padding: "15px 15px 20px 15px",
-                                width: 604, minHeight: 450
-                            }}>
-                                <dt style={{
-                                    font: "normal normal normal 24px/32px Segoe UI", letterSpacing: "0px",
-                                    color: "#4F52B2", opacity: 1, textAlign: "center", margin: "10px auto"
-                                }}>
-                                    Microsoft Teams
-                                </dt>
-                                <dt style={{
-                                    font: "normal normal 600 18px/24px Segoe UI", letterSpacing: "0px",
-                                    color: "#242424", opacity: 1, textAlign: "center", margin: "10px auto"
-                                }}>
-                                    System added you to the {teamName} of Teams Emergency Operations Center!
-                                </dt>
-                                <br />
-                                <table style={{
-                                    display: "flex", justifyContent: "center", marginTop: 10
-                                }} >
-                                    <tbody style={{ marginLeft: "auto", marginRight: "auto" }}>
-                                        <td style={{
-                                            opacity: 1, width: 280, backgroundColor: "#FFFFFF",
-                                            minHeight: 190, padding: 10
-                                        }}>
-                                            <p style={{
-                                                font: "normal normal 600 18px/24px Segoe UI", textAlign: "center",
-                                                letterSpacing: 0, color: "#242424", opacity: 1
-                                            }}>
-                                                {teamName} team!</p>
-                                            <hr />
-                                            <p style={{
-                                                font: "normal normal normal 14px/19px Segoe UI", textAlign: "center",
-                                                letterSpacing: 0, color: "#424242", opacity: 1, marginBottom: 10
-                                            }}>
-                                                {teamDescription}
-                                            </p>
-                                        </td>
-                                    </tbody>
-                                </table>
-                                <br />
-                                <table style={{ display: "flex", justifyContent: "center" }} >
-                                    <tbody style={{ marginLeft: "auto", marginRight: "auto" }}>
-                                        <td style={{
-                                            backgroundColor: "#4F52B2", opacity: 1, width: 404, height: 30,
-                                            textAlign: "center", marginTop: "10px",
-                                            marginBottom: "10px"
-                                        }}
-                                        >
-                                            <a
-                                                href={teamWebUrl} target="_blank" rel="noreferrer"
-                                                style={{
-                                                    color: "#FFFFFF", textDecoration: "none", width: 404,
-                                                    height: 30, display: "block", paddingTop: 7, paddingBottom: 3
-                                                }}
-                                                title="Open Microsoft Teams"
-                                            >
-                                                Open Microsoft Teams
-                                            </a>
-                                        </td>
-                                    </tbody>
-                                </table>
-                            </td>
-                        </table>
-                    )
-                },
-                toRecipients: [
-                    {
-                        emailAddress: {
-                            address: userMailId
-                        }
-                    }
-                ]
-            },
-            saveToSentItems: 'false'
-        });
-    }
-
-
-    //post adaptive card message to General channel
-    private async postIncidentMessage(teamGroupId: any) {
+    // updates incident ID based on created item Id
+    private updatedIncidentId = async (itemId: number): Promise<any> => {
         try {
-            //get the Team display name to @mention in the adaptive card
-            const response = await this.dataService.getGraphData(
-                graphConfig.teamsGraphEndpoint + "/" + teamGroupId, this.props.graph);
-            const teamDisplayName = response.displayName;
+            const updateValues = {
+                IncidentId: itemId
+            }
+            this.graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${itemId}/fields`;
 
-            //get General channel ID        
-            let generalChannelId = await this.dataService.getChannelId(this.props.graph, teamGroupId, constants.General);
-
-            await this.sendMessage(teamDisplayName, teamGroupId, generalChannelId);
-            console.log(constants.infoLogPrefix + "Adaptive Card message is posted to General channel");
-        }
-        catch (error) {
+            const updatedIncident = await this.dataService.updateItemInList(this.graphEndpoint, this.props.graph, updateValues);
+            return updatedIncident;
+        } catch (error) {
             console.error(
-                constants.errorLogPrefix + "CreateIncident_postIncidentMessage \n",
+                constants.errorLogPrefix + "CreateIncident_UpdatedIncidentId \n",
                 JSON.stringify(error)
             );
+            // Log Exception
+            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_UpdatedIncidentId', this.props.userPrincipalName);
         }
     }
 
-    //create and send adaptive card to General channel
-    private async sendMessage(teamDisplayName: string, teamGroupId: any, channelId: string) {
-        try {
-            let cardBody = {
-                "body": {
-                    "contentType": "html",
-                    "content": "<at id='0'>" + teamDisplayName + "</at> - This new team has been created to respond to the following incident: <attachment id='9649cac0-49bb-4406-9527-5d328f255750'></attachment>",
-                },
-                "attachments": [
-                    {
-                        "id": "9649cac0-49bb-4406-9527-5d328f255750",
-                        "contentType": "application/vnd.microsoft.card.adaptive",
-                        "content": JSON.stringify({
-                            "type": "AdaptiveCard",
-                            "body": [
-                                {
-                                    "type": "ColumnSet",
-                                    "columns": [
-                                        {
-                                            "type": "Column",
-                                            "items": [
-                                                {
-                                                    "type": "TextBlock",
-                                                    "text": "**Incident Name:**  " + this.state.incDetailsItem.incidentName,
-                                                    "wrap": true
-                                                },
-                                                {
-                                                    "type": "TextBlock",
-                                                    "spacing": "None",
-                                                    "text": "**Severity:**  " + constants.severity[this.state.selectedSeverity],
-                                                    "wrap": true
-                                                },
-                                                {
-                                                    "type": "TextBlock",
-                                                    "spacing": "None",
-                                                    "text": "**Location:**  " + this.state.incDetailsItem.location,
-                                                    "wrap": true
-                                                },
-                                                {
-                                                    "type": "TextBlock",
-                                                    "isVisible": this.state.toggleCloudStorageLocation ? true : false,
-                                                    "spacing": "None",
-                                                    "text": "**Cloud Storage:**   [Open Link](" + this.state.incDetailsItem.cloudStorageLink + ")",
-                                                    "wrap": true
-                                                }
-                                            ],
-                                            "width": "stretch"
-                                        }
-                                    ]
-                                },
-                                {
-                                    "type": "TextBlock",
-                                    "wrap": true,
-                                    "text": "Please reach out to **" + this.state.incDetailsItem.incidentCommander.userName + "**, your Incident Commander, for any additional information and engage here in this team for response."
-                                }
-                            ],
-                            "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
-                            "version": "1.5"
-                        })
-                    },
-                ],
-                "mentions": [
-                    {
-                        "id": 0,
-                        "mentionText": teamDisplayName,
-                        "mentioned": {
-                            "conversation": {
-                                "id": teamGroupId,
-                                "displayName": teamDisplayName,
-                                "conversationIdentityType": "team"
-                            }
-                        }
-                    }
-                ],
-            };
-
-            const endpoint = graphConfig.teamsGraphEndpoint + "/" + teamGroupId +
-                graphConfig.channelsGraphEndpoint + "/" + channelId + graphConfig.messagesGraphEndpoint;
-            await this.dataService.sendGraphPostRequest(endpoint, this.props.graph, cardBody);
-        }
-        catch (error) {
-            console.error(
-                constants.errorLogPrefix + "CreateIncident_sendMessage \n",
-                JSON.stringify(error)
-            );
-        }
-    }
-
-
-    // update item in Incident Transaction list
-    private updateIncidentItemInList = async (itemId: number, updateItemObj: any): Promise<any> => {
+    // updates incident ID based on created item Id
+    private updatedTeamIdInList = async (itemId: number, updateItemObj: any): Promise<any> => {
         try {
             this.graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${itemId}/fields`;
             const updatedIncident = await this.dataService.updateItemInList(this.graphEndpoint, this.props.graph, updateItemObj);
@@ -2544,74 +1725,31 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private createTeamGroup = async (incId: string): Promise<any> => {
         return new Promise(async (resolve, reject) => {
             try {
-                this.setState({
-                    loaderMessage: this.props.localeStrings.createGroupLoaderMessage
-                });
                 let incDetails = this.state.incDetailsItem;
                 // update the date format
                 incDetails.startDateTime = moment(this.state.incDetailsItem.startDateTime).format("DDMMMYYYY");
 
-                // create an array for owners and members
-                const ownerArr: any = [];
+                // create members array
                 const membersArr: any = [];
-
-                //adding Incident Commander as Owner and Member to the group
-                ownerArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + incDetails.incidentCommander.userId);
-                membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + incDetails.incidentCommander.userId);
-
                 this.state.roleAssignments.forEach(roles => {
-                    //adding users of secondary incident commander role as owners and members
-                    if (roles.role === constants.secondaryIncidentCommanderRole) {
-                        roles.userDetailsObj.forEach(user => {
-                            if (ownerArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId) === -1) {
-                                ownerArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId);
-                            }
-                            if (membersArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId) === -1) {
-                                membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId);
-                            }
-                        });
-                        if (roles.leadDetailsObj !== undefined) {
-                            roles.leadDetailsObj.forEach(lead => {
-                                if (ownerArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + lead.userId) === -1) {
-                                    ownerArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + lead.userId);
-                                }
-                                if (membersArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + lead.userId) === -1) {
-                                    membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + lead.userId);
-                                }
-                            });
+                    roles.userDetailsObj.forEach(user => {
+                        if (membersArr.indexOf(graphConfig.usersGraphEndpoint + user.userId) === -1) {
+                            membersArr.push(graphConfig.usersGraphEndpoint + user.userId);
                         }
-                    } // adding users of other roles in role assignments as members
-                    else {
-                        roles.userDetailsObj.forEach(user => {
-                            if (membersArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId) === -1) {
-                                membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + user.userId);
-                            }
-                        });
-                        if (roles.leadDetailsObj !== undefined) {
-                            roles.leadDetailsObj.forEach(lead => {
-                                if (membersArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + lead.userId) === -1) {
-                                    membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + lead.userId);
-                                }
-                            });
-                        }
-                    }
+                    });
                 });
 
+                const ownerArr: any = [];
+                ownerArr.push(graphConfig.usersGraphEndpoint + incDetails.incidentCommander.userId);
 
                 // add current user as a owner if already not present so that we can perform teams creation
                 // and sharepoint site related operations on associated team site
-                if (ownerArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + this.props.currentUserId) === -1) {
-                    ownerArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + this.props.currentUserId);
-                }
-
-                // add current user as a member to be able to create planner plan. 
-                if (membersArr.indexOf(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + this.props.currentUserId) === -1) {
-                    membersArr.push(this.state.graphContextURL + graphConfig.usersGraphEndpoint + "/" + this.props.currentUserId)
+                if (ownerArr.indexOf(graphConfig.usersGraphEndpoint + this.props.currentUserId) === -1) {
+                    ownerArr.push(graphConfig.usersGraphEndpoint + this.props.currentUserId)
                 }
 
                 //format team display name
                 let teamDisplayName = this.formatTeamDisplayName(incId, incDetails);
-                let groupVisibility = this.props.graphBaseUrl === constants.defaultGraphBaseURL ? "Private" : "Public"
 
                 if (membersArr.length > 0) {
                     // create object to create teams group
@@ -2620,7 +1758,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         displayName: teamDisplayName,
                         mailNickname: `${constants.teamEOCPrefix}_${incId}`,
                         description: incDetails.incidentDesc,
-                        visibility: groupVisibility,
+                        visibility: "Private",
                         groupTypes: ["Unified"],
                         mailEnabled: true,
                         securityEnabled: true,
@@ -2637,7 +1775,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         displayName: teamDisplayName, // `${constants.teamEOCPrefix}-${incId}-${incDetails.incidentType}-${incDetails.startDateTime}`,
                         mailNickname: `${constants.teamEOCPrefix}_${incId}`,
                         description: incDetails.incidentDesc,
-                        visibility: groupVisibility,
+                        visibility: "Private",
                         groupTypes: ["Unified"],
                         mailEnabled: true,
                         securityEnabled: true,
@@ -2654,10 +1792,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     JSON.stringify(ex)
                 );
                 reject(ex);
-                console.error("EOC App - CreateTeamGroup_Failed to create M365 group \n" + ex);
+                console.error("EOC App - CreateTeamGroup_Failed to create teams group \n" + ex);
                 // Log Exception
                 this.dataService.trackException(this.props.appInsights, ex, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_CreateTeamGroup', this.props.userPrincipalName);
+
             }
+
         })
     }
 
@@ -2690,81 +1830,32 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
     // compare the teams membership with old and new roles
     private compareTeamsMembership = (allExistingMembers: any): any => {
-
-        this.setState({
-            loaderMessage: this.props.localeStrings.updateTeamMembershipLoaderMessage
-        });
-
-        /*creating an array of existing members except created by user to avoid removing it from team owners
-        when removing the user from the role assignments when duplicate exists*/
-        const allMembersExceptCreator = allExistingMembers.filter((user: any) => user.userId !== this.props.incidentData?.createdById);
-
-        //creating an array for existing Team Members
         const teamsMembers = allExistingMembers.filter((user: any) => {
             return user.roles.length === 0;
         });
 
-        //creating an array for existing Team Owners
-        const teamOwners = allExistingMembers.filter((user: any) => {
-            return user.roles.length > 0;
-        });
-
-        //creating an array of existing secondary commanders and role users
         const existingRoleUsers: any = [];
-        const existingSecondaryCommanders: any = [];
         this.state.existingRolesMembers.forEach((role: any) => {
-            if (role.role === constants.secondaryIncidentCommanderRole) {
-                role.userDetailsObj.forEach((user: any) => {
-                    existingSecondaryCommanders.push(user.userId);
-                })
-                if (role.leadDetailsObj !== undefined) {
-                    role.leadDetailsObj.forEach((lead: any) => {
-                        existingSecondaryCommanders.push(lead.userId);
-                    })
-                }
-            }
-            else {
-                role.userDetailsObj.forEach((user: any) => {
-                    existingRoleUsers.push(user.userId);
-                })
-                if (role.leadDetailsObj !== undefined) {
-                    role.leadDetailsObj.forEach((lead: any) => {
-                        existingRoleUsers.push(lead.userId);
-                    })
-                }
-            }
+            role.userDetailsObj.forEach((user: any) => {
+                existingRoleUsers.push(user.userId);
+            })
         });
 
-        //creating an array of new secondary commanders and role users
         const newRoleUsers: any = [];
-        const newSecondaryCommanders: any = [];
         this.state.roleAssignments.forEach((role: any) => {
-            if (role.role === constants.secondaryIncidentCommanderRole) {
-                role.userDetailsObj.forEach((user: any) => {
-                    newSecondaryCommanders.push({ role: role.role, userId: user.userId });
-                })
-                if (role.leadDetailsObj !== undefined) {
-                    role.leadDetailsObj.forEach((lead: any) => {
-                        newSecondaryCommanders.push({ role: role.role, userId: lead.userId });
-                    })
-                }
-            } else {
-                role.userDetailsObj.forEach((user: any) => {
-                    newRoleUsers.push({ role: role.role, userId: user.userId });
-                })
-                if (role.leadDetailsObj !== undefined) {
-                    role.leadDetailsObj.forEach((lead: any) => {
-                        newRoleUsers.push({ role: role.role, userId: lead.userId });
-                    })
-                }
-            }
+            role.userDetailsObj.forEach((user: any) => {
+                newRoleUsers.push({ role: role.role, userId: user.userId });
+            })
         });
 
-        //checking if all new role users are part of Team Members and adding it to array if the user is not a team member
+        let newAddedRoleUsers = newRoleUsers.filter((user: any) => existingRoleUsers.indexOf(user.userId) === -1);
+        let newAddedUsersForTags = newRoleUsers.filter((user: any) => existingRoleUsers.indexOf(user.userId) === -1);
+
+
         const users: any = [];
-        newRoleUsers.forEach((user: any) => {
+        newAddedRoleUsers.forEach((user: any) => {
             let isExisting = false;
-            teamsMembers.forEach((existingUser: any) => {
+            allExistingMembers.forEach((existingUser: any) => {
                 if (existingUser.userId === user.userId) {
                     isExisting = true;
                 }
@@ -2773,52 +1864,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 users.push(user);
             }
         });
-
-        //checking if all new secondary commanders are part of Team Owners and adding it to array if the user is not a team owner
-        const secondaryCommanderUsers: any = [];
-        newSecondaryCommanders.forEach((user: any) => {
-            let isExisting = false;
-            teamOwners.forEach((existingUser: any) => {
-                if (existingUser.userId === user.userId) {
-                    isExisting = true;
-                }
-            });
-            if (!isExisting) {
-                secondaryCommanderUsers.push(user);
-            }
-        });
-
         let newAddedUsers = users;
-        let newSecondaryCommanderUsers = secondaryCommanderUsers;
 
-        //creating an array to add the users to remove from Team Owners and Members
         let removedUsers: any = [];
 
-        //check if Inc commander has changed and remove the old Inc Commander from Owners
-        if (this.state.existingIncCommander.userId !== this.state.incDetailsItem.incidentCommander.userId) {
-
-            //check if the old Inc commander is also a Secondary Incident commander, if yes dont remove it from Owners
-            const isIncCommanderASecCommander = newSecondaryCommanders.filter((user: any) => user.userId === this.state.existingIncCommander.userId);
-            //remove from owners if the old Inc commander is not a Secondary Incident commander
-            if (isIncCommanderASecCommander.length === 0)
-                removedUsers.push(this.state.existingIncCommander.userId);
-        }
-
-        //check if any user is removed from secondary inc commander role and add it to array
-        existingSecondaryCommanders.forEach((user: string) => {
-            let isFound = false;
-            newSecondaryCommanders.forEach((newUser: any) => {
-                if (user === newUser.userId)
-                    isFound = true;
-            });
-            if (!isFound) {
-                //remove only if the user is not an incident commander
-                if (user !== this.state.existingIncCommander.userId)
-                    removedUsers.push(user);
-            }
-        });
-
-        //check if any user is removed from any of the roles and add it to array
         existingRoleUsers.forEach((user: string) => {
             let isFound = false;
             newRoleUsers.forEach((newUser: any) => {
@@ -2830,24 +1879,25 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             }
         });
 
-        //create an array with id of an user from Teams, to remove them from membership
         const removedMembershipIds: any = [];
         removedUsers.forEach((user: any) => {
-            allMembersExceptCreator.filter((member: any) => {
+            teamsMembers.filter((member: any) => {
                 if (member.userId === user) {
                     removedMembershipIds.push(member.id);
                 }
             })
         });
 
+
         if (this.state.existingIncCommander.userId === this.state.incDetailsItem.incidentCommander.userId) {
             let usersObj = {
                 newAddedUsers: newAddedUsers,
-                removedMembershipIds: removedMembershipIds,
+                newAddedUsersForTags: newAddedUsersForTags,
                 removedUsers: removedUsers,
-                removeIncCommander: [],
-                newSecondaryIncidentCommanders: newSecondaryCommanderUsers
+                removedMembershipIds: removedMembershipIds,
+                removeIncCommander: []
             }
+
             return usersObj;
         }
         else {
@@ -2855,10 +1905,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
             let usersObj = {
                 newAddedUsers: newAddedUsers,
-                removedMembershipIds: removedMembershipIds,
+                newAddedUsersForTags: newAddedUsersForTags,
                 removedUsers: removedUsers,
-                removeIncCommander: [currentIncCommander[0].id],
-                newSecondaryIncidentCommanders: newSecondaryCommanderUsers
+                removedMembershipIds: removedMembershipIds,
+                removeIncCommander: [currentIncCommander[0].id]
             }
 
             return usersObj;
@@ -2866,7 +1916,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     }
 
     // remove users from Teams members
-    private async removeUsersFromTeam(userIds: [], isTeam: boolean, channelId?: string): Promise<any> {
+    private async removeUsersFromTeam(userIds: []): Promise<any> {
         let result: any = {
             isAllDeleted: false,
             failedEntries: [],
@@ -2880,9 +1930,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 while (!allDone) {
                     let user = userIds[counter];
                     try {
-                        this.graphEndpoint = isTeam ? graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.membersGraphEndpoint + "/" + user :
-                            //building graph end point to remove user from shared channel
-                            graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.channelsGraphEndpoint + "/" + channelId + graphConfig.membersGraphEndpoint + "/" + user
+                        this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.membersGraphEndpoint + "/" + user;
 
                         await this.dataService.sendGraphDeleteRequest(this.graphEndpoint, this.props.graph);
 
@@ -2905,22 +1953,22 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     }
 
     // add users to teams members
-    private async addUsersToTeam(userIds: any, isOwner: boolean): Promise<any> {
+    private async addUsersToTeam(userIds: any, isIncCommander: boolean): Promise<any> {
         return new Promise(async (resolve, reject) => {
             this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.addMembersGraphEndpoint;
 
             const usersToAdd: any = [];
-            if (isOwner) {
+            if (isIncCommander) {
                 userIds.forEach((user: any) => {
                     usersToAdd.push({
                         "@odata.type": "microsoft.graph.aadUserConversationMember",
                         "roles": ["owner"],
-                        "user@odata.bind": this.state.graphContextURL + graphConfig.usersGraphEndpoint + "('" + user.userId + "')"
+                        "user@odata.bind": graphConfig.addUsersGraphEndpoint + "('" + user.userId + "')"
                     });
                 });
             }
             else {
-                // logic to identify uniqe users 
+                // logic to identify uniqe users
                 const uniqueUserArray: any = [];
                 userIds.forEach((user: any) => {
                     if (uniqueUserArray.indexOf(user.userId) === -1) {
@@ -2928,9 +1976,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         usersToAdd.push({
                             "@odata.type": "microsoft.graph.aadUserConversationMember",
                             "roles": [],
-                            "user@odata.bind": this.state.graphContextURL + graphConfig.usersGraphEndpoint + "('" + user.userId + "')"
+                            "user@odata.bind": graphConfig.addUsersGraphEndpoint + "('" + user.userId + "')"
                         });
                     }
+
                 });
             }
 
@@ -2986,7 +2035,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                         }
 
                         if (existingTagDetails.length > 0) {
-                            this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.tagsGraphEndpoint + "/" + existingTagDetails[0].id + graphConfig.membersGraphEndpoint;
+                            this.graphEndpoint = graphConfig.betaGraphEndpoint + this.state.teamGroupId + graphConfig.tagsGraphEndpoint + "/" + existingTagDetails[0].id + graphConfig.membersGraphEndpoint;
 
                             let addMember = await this.dataService.sendGraphPostRequest(this.graphEndpoint, this.props.graph, members[0]);
 
@@ -3017,20 +2066,17 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     // create Team associated with Teams group
     private async createTeam(groupInfo: any): Promise<any> {
         return new Promise(async (resolve) => {
-            let maxTeamCreationAttempt = 15, isTeamCreated = false;
+            let maxTeamCreationAttempt = 5, isTeamCreated = false;
 
             let result = {
                 status: false,
                 data: {}
             };
 
-            this.setState({
-                loaderMessage: this.props.localeStrings.createTeamLoaderMessage
-            });
-
             // loop till the team is created
             // attempting multiple times as sometimes teams group doesn't reflect immediately after creation
             while (isTeamCreated === false && maxTeamCreationAttempt > 0) {
+                // let dataService = new CommonService();
                 try {
                     // create the team setting object
                     let teamSettings = JSON.stringify(this.getTeamSettings());
@@ -3041,13 +2087,13 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
                     // update the result object
                     if (updatedTeamInfo) {
-                        console.log(constants.infoLogPrefix + "Incident Team created");
+                        console.log(constants.infoLogPrefix + "Teams created on - " + new Date());
                         isTeamCreated = true;
                         result.data = updatedTeamInfo;
                         result.status = true;
                     }
                 } catch (updationError: any) {
-                    console.log(constants.infoLogPrefix + "Incident Team creation failed");
+                    console.log(constants.infoLogPrefix + "Teams creation failed on - " + new Date());
                     console.error(
                         constants.errorLogPrefix + "CreateIncident_CreateTeam \n",
                         JSON.stringify(updationError)
@@ -3056,14 +2102,14 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     this.dataService.trackException(this.props.appInsights, updationError, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_CreateTeam', this.props.userPrincipalName);
                     if (updationError.statusCode === 409 && updationError.message === "Team already exists") {
                         isTeamCreated = true;
-                        this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + groupInfo.id;
+                        this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + groupInfo.id;
                         result.data = await this.dataService.getGraphData(this.graphEndpoint, this.props.graph)
                     }
                 }
                 maxTeamCreationAttempt--;
-                await this.timeout(5000);
+                await this.timeout(10000);
             }
-            console.log(constants.infoLogPrefix + "createTeam_No Of Attempt", (15 - maxTeamCreationAttempt), result);
+            console.log(constants.infoLogPrefix + "createTeam_No Of Attempt", (5 - maxTeamCreationAttempt), result);
             resolve(result);
         });
     }
@@ -3101,97 +2147,87 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     // get channels to be created
     private getFixedChannel(): Array<ITeamChannel> {
         let res: Array<ITeamChannel> = [];
-        if (this.state.toggleAdditionalChannels) {
-            this.state.incDetailsItem.additionalTeamChannels.forEach((channel: IAdditionalTeamChannels) => {
-                if (channel.channelName.trim() !== "") {
-                    res.push({
-                        "displayName": channel.channelName.trim()
-                    });
-                }
-            });
-        }
-        else {
-            Object.values(constants.defaultChannelConstants).forEach((channel: string) => {
-                res.push({ "displayName": channel })
-            });
-        }
+        res.push({
+            "displayName": "Logistics",
+        });
+        res.push({
+            "displayName": "Planning",
+        });
+        res.push({
+            "displayName": "Recovery",
+        });
+        res.push({
+            "displayName": "Urgent",
+        });
         return res;
     }
 
-    //create channels
+    // create channels
     private async createChannels(group_details: any): Promise<any> {
-        //some time graph api does't create the channel 
-        //thats why we need to re-try 2 time if again it failed then need to take this into failed item. otherwise simply add into 
+        //some time graph api does't create the channel
+        //thats why we need to re-try 2 time if again it failed then need to take this into failed item. otherwise simply add into
         //created list, we need to show end-use if something failed then need to pop those error.
-        this.setState({
-            loaderMessage: this.props.localeStrings.createChannelLoaderMessage
-        });
+
         let channels = this.getFixedChannel();
         let result: ChannelCreationResult = {
             isFullyCreated: false,
             isPartiallyCreated: false,
             failedEntries: [],
-            successEntries: [],
-            failedChannels: []
+            successEntries: []
         };
-        return new Promise(async (resolve) => {
-            if (channels.length > 0) {
-                const MAX_NUMBER_OF_ATTEMPT = 3;
-                let noOfAttempt = 1;
-                let allDone = false;
-                let counter = 0;
+        const MAX_NUMBER_OF_ATTEMPT = 3;
+        let noOfAttempt = 1;
+        return new Promise(async (resolve, reject) => {
+            let allDone = false;
+            let counter = 0;
 
-                // loop atlease 3 times or till the channel is created
-                while (!allDone) {
-                    let channel = channels[counter];
-                    try {
-                        this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + group_details.id + graphConfig.channelsGraphEndpoint;
-                        let createdChannel = await this.dataService.createChannel(this.graphEndpoint, this.props.graph, channel);
+            // loop atlease 3 times or till the channel is created
+            while (!allDone) {
+                let channel = channels[counter];
+                try {
+                    // const dataService = new CommonService();
+                    this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + group_details.id + graphConfig.channelsGraphEndpoint;
+                    let createdChannel = await this.dataService.createChannel(this.graphEndpoint, this.props.graph, channel)
 
-                        if (createdChannel) {
-                            // set channel object
-                            let channelObj: ChannelCreationStatus = {
-                                channelName: channel.displayName,
-                                isCreated: true,
-                                noOfCreationAttempt: noOfAttempt,
-                                rawData: createdChannel
-                            };
-                            noOfAttempt = 1;
-                            result.successEntries.push(channelObj);
-                        }
-                        counter++;
-                    } catch (ex: any) {
-                        console.error(
-                            constants.errorLogPrefix + "CreateIncident_CreateChannels \n",
-                            JSON.stringify(ex)
-                        );
-                        // Log Exception
-                        this.dataService.trackException(this.props.appInsights, ex, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_CreateChannels', this.props.userPrincipalName);
-
-                        if (noOfAttempt >= MAX_NUMBER_OF_ATTEMPT) {
-                            let channelObj: ChannelCreationStatus = {
-                                channelName: channel.displayName,
-                                isCreated: false,
-                                noOfCreationAttempt: noOfAttempt,
-                                rawData: ex.message
-                            };
-                            noOfAttempt = 1;
-                            result.isFullyCreated = false;
-                            result.failedEntries.push(channelObj);
-                            result.failedChannels.push(channel.displayName)
-                            counter++;
-                        } else {
-                            noOfAttempt++;
-                        }
+                    if (createdChannel) {
+                        // set channel object
+                        let channelObj: ChannelCreationStatus = {
+                            channelName: channel.displayName,
+                            isCreated: true,
+                            noOfCreationAttempt: noOfAttempt,
+                            rawData: createdChannel
+                        };
+                        noOfAttempt = 1;
+                        result.successEntries.push(channelObj);
                     }
-                    allDone = (channels.length) === counter;
+                    counter++;
+                } catch (ex: any) {
+                    console.error(
+                        constants.errorLogPrefix + "CreateIncident_CreateChannels \n",
+                        JSON.stringify(ex)
+                    );
+                    // Log Exception
+                    this.dataService.trackException(this.props.appInsights, ex, constants.componentNames.IncidentDetailsComponent, 'CreateIncident_CreateChannels', this.props.userPrincipalName);
+
+                    if (noOfAttempt >= MAX_NUMBER_OF_ATTEMPT) {
+                        let channelObj: ChannelCreationStatus = {
+                            channelName: channel.displayName,
+                            isCreated: false,
+                            noOfCreationAttempt: noOfAttempt,
+                            rawData: ex.message
+                        };
+                        noOfAttempt = 1;
+                        result.isFullyCreated = false;
+                        result.failedEntries.push(channelObj);
+                        counter++;
+                    } else {
+                        noOfAttempt++;
+                    }
                 }
-                result.isFullyCreated = result.failedEntries.length === 0 ? true : false;
-                resolve(result);
+                allDone = (channels.length - 1) === counter;
             }
-            else {
-                resolve(result);
-            }
+            result.isFullyCreated = result.failedEntries.length === 0 ? true : false;
+            resolve(result);
         });
     }
 
@@ -3199,9 +2235,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private async createAssessmentChannelAndTab(team_id: string, site_base_url: string, site_name: string): Promise<any> {
         return new Promise(async (resolve, reject) => {
             try {
-                this.setState({
-                    loaderMessage: this.props.localeStrings.createAssessmentChannelLoaderMessage
-                });
                 const channelGraphEndpoint = graphConfig.teamsGraphEndpoint + "/" + team_id + graphConfig.channelsGraphEndpoint;
                 const channelObj = {
                     "displayName": constants.Assessment,
@@ -3216,17 +2249,17 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 //Associate Assessment via sharepoint app
                 const assessmentTabObj = {
                     "displayName": constants.GroundAssessments,
-                    "teamsApp@odata.bind": this.state.graphContextURL + graphConfig.sharepointPageAndListTabGraphEndpoint,
+                    "teamsApp@odata.bind": graphConfig.assessmentTabTeamsAppIdGraphEndpoint,
                     "configuration": {
                         "entityId": uuidv4(),
-                        "contentUrl": `${site_base_url}/_layouts/15/teamslogon.aspx?spfx=true&dest=${site_name}/Lists/${siteConfig.lists[0].listURL}/AllItems.aspx`,
+                        "contentUrl": `${site_base_url}/_layouts/15/teamslogon.aspx?spfx=true&dest=/sites/${site_name}/Lists/${siteConfig.lists[0].listURL}/AllItems.aspx`,
                         "removeUrl": null,
                         "websiteUrl": null
                     }
                 }
 
                 await this.dataService.sendGraphPostRequest(tabGraphEndpoint, this.props.graph, assessmentTabObj);
-                console.log(constants.infoLogPrefix + "Ground Assessments tab is added to the Assessment channel");
+                console.log(constants.infoLogPrefix + "list view added to assessment tab");
                 resolve({
                     status: true,
                     message: "channel and tab created also installed app into tab"
@@ -3245,12 +2278,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     }
 
     // create News tab
-    private createNewsTab(team_info: any, teamSiteURL: string, teamSiteManagedPath: string): Promise<any> {
+    private createNewsTab(team_info: any, siteBaseURL: string): Promise<any> {
         return new Promise(async (resolve, reject) => {
             try {
-                this.setState({
-                    loaderMessage: this.props.localeStrings.createAnnouncementChannelLoaderMessage
-                });
                 this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + team_info.id + graphConfig.channelsGraphEndpoint;
 
                 const tabObj = {
@@ -3259,24 +2289,29 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     isFavoriteByDefault: true
                 };
                 const channelResult = await this.dataService.sendGraphPostRequest(this.graphEndpoint, this.props.graph, tabObj);
-                console.log(constants.infoLogPrefix + "Announcements channel created");
+                console.log(constants.infoLogPrefix + "News tab created");
+                // get the app ID
+                //const app = await this.getTeamEOCApp();
 
                 const addTabObj = {
                     "displayName": constants.News,
-                    "teamsApp@odata.bind": this.state.graphContextURL + graphConfig.sharepointPageAndListTabGraphEndpoint,
+                    "teamsApp@odata.bind": graphConfig.newsTabTeamsAppIdGraphEndpoint,
                     "configuration": {
                         "entityId": uuidv4(),
-                        "contentUrl": `${teamSiteURL}/_layouts/15/teamslogon.aspx?spfx=true&dest=${teamSiteManagedPath}/_layouts/15/news.aspx`,
+                        "contentUrl": `${siteBaseURL}${team_info.mailNickname}/_layouts/15/teamslogon.aspx?spfx=true&dest=/sites/${team_info.mailNickname}/_layouts/15/news.aspx`,
                         "removeUrl": null,
-                        "websiteUrl": `${teamSiteURL}/_layouts/15/news.aspx`
+                        "websiteUrl": `${siteBaseURL}${team_info.mailNickname}/_layouts/15/news.aspx`
                     }
                 }
                 const addTabGraphEndpoint = graphConfig.teamsGraphEndpoint + "/" + team_info.id + graphConfig.channelsGraphEndpoint + "/" + channelResult.id + graphConfig.tabsGraphEndpoint;
 
                 // calling a generic method which is send a post query to the graph endpoint
-                const tabResult = await this.dataService.sendGraphPostRequest(addTabGraphEndpoint, this.props.graph, addTabObj);
-                console.log(constants.infoLogPrefix + "News tab is added to the Announcements channel");
-                resolve(tabResult.webUrl);
+                await this.dataService.sendGraphPostRequest(addTabGraphEndpoint, this.props.graph, addTabObj);
+                console.log(constants.infoLogPrefix + "News page added to news tab");
+                resolve({
+                    status: true,
+                    message: "channel and tab created also installed app into tab"
+                });
             } catch (ex) {
                 console.error(
                     constants.errorLogPrefix + "CreateIncident_CreateNewsTab \n",
@@ -3308,10 +2343,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                     },
                 };
 
-                this.graphEndpoint = graphConfig.spSiteGraphEndpoint + siteId + graphConfig.listsGraphEndpoint;
+                this.graphEndpoint = graphConfig.sitesGraphEndpoint + "/" + siteId + graphConfig.listsGraphEndpoint;
 
                 const listCreationRes = await this.dataService.sendGraphPostRequest(this.graphEndpoint, this.props.graph, listSchema);
-                console.log(constants.infoLogPrefix + "Ground Assessments list is created in SharePoint site");
 
                 resolve(listCreationRes);
             } catch (ex) {
@@ -3336,10 +2370,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             successEntries: []
         };
 
-        this.setState({
-            loaderMessage: this.props.localeStrings.createTagsLoaderMessage
-        });
-
         return new Promise(async (resolve, reject) => {
             let allDone = false;
             let counter = 0;
@@ -3348,22 +2378,13 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                 while (!allDone) {
                     let role = roles[counter];
                     try {
-                        this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + teamId + graphConfig.tagsGraphEndpoint;
+                        this.graphEndpoint = graphConfig.betaGraphEndpoint + teamId + graphConfig.tagsGraphEndpoint;
                         const members: any = [];
                         role.userDetailsObj.forEach((users: any) => {
                             members.push({
                                 "userId": users.userId
                             })
                         });
-                        if (role.leadDetailsObj !== undefined) {
-                            role.leadDetailsObj.forEach((lead: any) => {
-                                if (!members.find((user: any) => user.userId === lead.userId)) {
-                                    members.push({
-                                        "userId": lead.userId
-                                    })
-                                }
-                            });
-                        }
                         const tagObj = {
                             "displayName": role.role,
                             "members": members
@@ -3458,7 +2479,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     // Get all existing tags for the team
     private async getAllTags(): Promise<any> {
         return new Promise(async (resolve, reject) => {
-            this.graphEndpoint = graphConfig.teamsGraphEndpoint + "/" + this.state.teamGroupId + graphConfig.tagsGraphEndpoint;
+            this.graphEndpoint = graphConfig.betaGraphEndpoint + this.state.teamGroupId + "/" + graphConfig.tagsGraphEndpoint;
             try {
                 const existingTags = await this.dataService.getGraphData(this.graphEndpoint, this.props.graph);
                 resolve(existingTags);
@@ -3500,7 +2521,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         return rolesToAdd;
     }
 
-    //delete team group
+    // method to delete team group
     private async deleteTeamGroup(group_id: string): Promise<any> {
         return new Promise(async (resolve, reject) => {
             this.graphEndpoint = graphConfig.teamGroupsGraphEndpoint + "/" + group_id;
@@ -3520,7 +2541,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         });
     }
 
-    //delete created incident
+    // method to delete created incident
     private async deleteIncident(incidentId: number): Promise<any> {
         return new Promise(async (resolve, reject) => {
             this.graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${incidentId}`;
@@ -3539,165 +2560,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         });
     }
 
-    //toggle Additional Channel fields
-    private onToggleAdditionChannels(checked: any) {
-        if (this.state.incDetailsItem.additionalTeamChannels === undefined && checked) {
-            this.setState({
-                incDetailsItem: {
-                    ...this.state.incDetailsItem,
-                    additionalTeamChannels: [
-                        {
-                            channelName: constants.defaultChannelConstants.Logistics,
-                            hasRegexError: false, regexErrorMessage: ""
-                        },
-                        {
-                            channelName: constants.defaultChannelConstants.Planning,
-                            hasRegexError: false, regexErrorMessage: ""
-                        },
-                        {
-                            channelName: constants.defaultChannelConstants.Recovery,
-                            hasRegexError: false, regexErrorMessage: ""
-                        }
-                    ]
-                }
-            });
-        }
-        this.setState({ toggleAdditionalChannels: checked });
-    }
-
-    //update additional channel name into array
-    private updateAdditionalChannel(_evt: any, inputObj: any, idx: number) {
-        const additionalChannels = this.state.incDetailsItem.additionalTeamChannels;
-        additionalChannels[idx].channelName = inputObj.value;
-        //validate the channel names
-        if (additionalChannels[idx].channelName.trim() !== "") {
-            //check if the channel name has underscore (_) or period (.) at the beginning of the string
-            if (additionalChannels[idx].channelName.trim().charAt(0) === "." || additionalChannels[idx].channelName.trim().charAt(0) === "_") {
-                additionalChannels[idx].hasRegexError = true;
-                additionalChannels[idx].regexErrorMessage = this.props.localeStrings.channelNameStartLetterRegexError;
-            }
-            //check if the channel name has period (.) at the end of the string
-            else if (additionalChannels[idx].channelName.trim().charAt(additionalChannels[idx].channelName.trim().length - 1) === ".") {
-                additionalChannels[idx].hasRegexError = true;
-                additionalChannels[idx].regexErrorMessage = this.props.localeStrings.channelNameLastLetterRegexError;
-            }
-            //check if the channel name has any of these restricted characters ~ # % & * { } + / \\ : < > .. ? | '" in the string  
-            else if (!/^(?!.*\.\.)[^._~#%&*{}+/\\:<>?|'"][^~#%&*{}+/\\:<>?|'"]*[^~#%&*{}+/\\:<>?|'".]$/.test(additionalChannels[idx].channelName.trim()) ||
-                additionalChannels[idx].channelName.trim()?.indexOf('\\') > -1) {
-                if (additionalChannels[idx].channelName.trim()?.length === 1 && additionalChannels[idx].channelName.trim()?.indexOf("\\") === -1 &&
-                    /[^._~#%&*{}+/\\:<>?|'"]/.test(additionalChannels[idx].channelName.trim())) {
-                    additionalChannels[idx].hasRegexError = false;
-                    additionalChannels[idx].regexErrorMessage = "";
-                }
-                else {
-                    additionalChannels[idx].hasRegexError = true;
-                    additionalChannels[idx].regexErrorMessage = this.props.localeStrings.ChannelNameRegexError;
-                }
-            }
-            else {
-                additionalChannels[idx].hasRegexError = false;
-                additionalChannels[idx].regexErrorMessage = ""
-            }
-        }
-        else {
-            additionalChannels[idx].hasRegexError = false;
-            additionalChannels[idx].regexErrorMessage = ""
-        }
-        this.setState({
-            incDetailsItem: { ...this.state.incDetailsItem, additionalTeamChannels: [...additionalChannels] },
-        });
-    }
-
-    //On click of 'Add Channel' button add a new Channel Input control
-    private addChannelInput() {
-        const additionalChannels = this.state.incDetailsItem.additionalTeamChannels;
-        additionalChannels.push({ channelName: "", hasRegexError: false, regexErrorMessage: "" });
-        this.setState({ incDetailsItem: { ...this.state.incDetailsItem, additionalTeamChannels: [...additionalChannels] } });
-    }
-
-    //Remove Channel input Control on click of Remove icon
-    private removeChannelInput(index: number) {
-        const additionalChannels = this.state.incDetailsItem.additionalTeamChannels;
-        additionalChannels.splice(index, 1);
-        this.setState({
-            incDetailsItem: {
-                ...this.state.incDetailsItem,
-                additionalTeamChannels: [...additionalChannels]
-            }
-        });
-    }
-
-    //On Toggle cloud storage link
-    private async onToggleCloudStorageLink(checked: any) {
-        this.setState({ toggleCloudStorageLocation: checked });
-        if (checked && this.state.isEditMode && this.props.incidentData?.cloudStorageLink === undefined) {
-            if (this.state.incidentTypeRoleDefaultData.length === 0) {
-                await this.getIncidentTypeDefaultData();
-                //check if we have data for selected incident type
-                const filteredincidentTypeDefaultData = this.state.incidentTypeRoleDefaultData
-                    .filter((e: any) => e.incidentType === this.props.incidentData?.incidentType);
-                //Assign default Cloud Storage link
-                if (filteredincidentTypeDefaultData.length > 0) {
-                    const cloudStorageLink = filteredincidentTypeDefaultData[0]?.cloudStorageLink?.trim();
-                    this.setState({
-                        incDetailsItem: {
-                            ...this.state.incDetailsItem,
-                            cloudStorageLink: cloudStorageLink !== "" ? cloudStorageLink : "",
-                        }
-                    });
-                }
-                else this.setState({ incDetailsItem: { ...this.state.incDetailsItem, cloudStorageLink: "" } })
-            }
-        }
-    }
-
-    //On Toggle guest users button
-    private onToggleGuestUsers(checked: any) {
-        if ((this.state.incDetailsItem.guestUsers === undefined || this.state.incDetailsItem.guestUsers.length === 0) && checked) {
-            this.setState({
-                incDetailsItem: {
-                    ...this.state.incDetailsItem,
-                    guestUsers: [{
-                        email: "", displayName: "", hasDisplayNameRegexError: false, hasEmailRegexError: false,
-                        hasDisplayNameValidationError: false, hasEmailValidationError: false
-                    }]
-                }
-            });
-        }
-        this.setState({ toggleGuestUsers: checked });
-    }
-
-    //On click of 'Add More' button add a new Guest User Input control
-    private addGuestUserInput() {
-        const guestUsers = this.state.incDetailsItem.guestUsers;
-        guestUsers.push({
-            email: "", displayName: "", hasDisplayNameRegexError: false,
-            hasEmailRegexError: false, hasDisplayNameValidationError: false, hasEmailValidationError: false
-        });
-        this.setState({ incDetailsItem: { ...this.state.incDetailsItem, guestUsers: [...guestUsers] } });
-    }
-
-    //update guest user details into array
-    private updateGuestUser(inputObj: any, idx: number, fieldName: string) {
-        const guestUsers: IGuestUsers[] = this.state.incDetailsItem.guestUsers;
-        guestUsers[idx][fieldName] = inputObj.value
-
-        if (guestUsers.filter((user: IGuestUsers) => user.email.trim() !== "" || user.displayName.trim() !== "").length > 0) {
-            this.setState({ inputValidation: { ...this.state.inputValidation, guestUsersHasError: false } });
-        }
-        else {
-            this.setState({ inputValidation: { ...this.state.inputValidation, guestUsersHasError: true } });
-        }
-        if ((guestUsers[idx].email.trim() !== "" && guestUsers[idx].displayName.trim() !== "") ||
-            (guestUsers[idx].email.trim() === "" && guestUsers[idx].displayName.trim() === "")) {
-            guestUsers[idx].hasDisplayNameValidationError = false;
-            guestUsers[idx].hasEmailValidationError = false;
-        }
-        this.setState({
-            incDetailsItem: { ...this.state.incDetailsItem, guestUsers: [...guestUsers] },
-        });
-    }
-
     // move focus to top of page to show loader or message bar
     private scrollToTop = () => {
         window.scrollTo({
@@ -3706,26 +2568,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         });
     };
 
-    //Tooltip for info Icon
-    private iconWithTooltip(iconName: string, tooltipContent: string, className: string) {
-        return (
-            <span className={className}>
-                <TooltipHost
-                    content={tooltipContent}
-                    calloutProps={calloutProps}
-                    hostClassName="tooltip-host-class"
-                >
-                    <Icon iconName={iconName} />
-                </TooltipHost>
-            </span>
-        );
-    }
-
     //format the date to show in the date picker
     private onFormatDate = (date?: Date): string => {
         let formattedDate = moment(date).format("MMM DD YYYY");
         return formattedDate;
-    }
+    };
 
     //update the state variable whenever the date is changed in the date picker control
     private onChangeStartDate = (date: Date | null | undefined) => {
@@ -3735,7 +2582,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             incInfo["startDate"] = date;
             this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj });
         }
-    }
+    };
 
     //update the state variable whenever the time is changed in the time picker control
     private onChangeStartTime = (_ev: React.FormEvent<IComboBox>, time: Date) => {
@@ -3749,9 +2596,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
             inputValidationObj.incidentStartDateTimeHasError = false;
         }
         this.setState({ incDetailsItem: incInfo, inputValidation: inputValidationObj });
-    }
+    };
 
-    //adding key for all incident types
+    //add key for all the options in the ComboBox control
     private options = (optionArray: any) => {
         let myOptions: { key: any; text: any; }[] = [];
         optionArray.forEach((element: any) => {
@@ -3760,20 +2607,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
         return myOptions;
     }
 
-    //adding key for all incident status
-    private statusOptions = (optionArray: any) => {
-        let myOptions: { key: any; text: any; }[] = [];
-        optionArray.forEach((element: any) => {
-            myOptions.push({ key: element.id, text: element.status });
-        });
-        return myOptions;
-    }
-
-    //method is called when the menu opens for incident type combo box
+    //on menu open, add the ariaLabel attribute to fix the position issue in iOS for accessbility
     private onMenuOpen = () => {
 
         //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        if (navigator.userAgent.match(/iPhone/i)) {
+        if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
             const listBoxElement: any = document.getElementById("incident-type-listbox-list")?.children;
             if (listBoxElement?.length > 0) {
                 for (let i = 0; i < listBoxElement?.length; i++) {
@@ -3791,7 +2629,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private onStatusMenuOpen = () => {
 
         //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
-        if (navigator.userAgent.match(/iPhone/i)) {
+        if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
             const listBoxElement: any = document.getElementById("incident-status-listbox-list")?.children;
             if (listBoxElement?.length > 0) {
                 for (let i = 0; i < listBoxElement?.length; i++) {
@@ -3809,7 +2647,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private setSuggestionsAttributes = () => {
         //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
         setTimeout(() => {
-            if (navigator.userAgent.match(/iPhone/i)) {
+            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
                 const shadow = this.incidentCommandar.current?.shadowRoot;
                 let suggestionsListItems: any = shadow?.getElementById("suggestions-list")?.children;
 
@@ -3836,7 +2674,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private setSearchUserAttributes = () => {
         //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
         setTimeout(() => {
-            if (navigator.userAgent.match(/iPhone/i)) {
+            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
                 const shadow = this.searchUser.current?.shadowRoot;
                 let suggestionsListItems: any = shadow?.getElementById("suggestions-list")?.children;
 
@@ -3864,7 +2702,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
     private setSearchUserEditModeAttributes = () => {
         //adding option position information to aria attribute to fix the accessibility issue in iOS Voiceover
         setTimeout(() => {
-            if (navigator.userAgent.match(/iPhone/i)) {
+            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
                 const shadow = this.searchUserEditMode.current?.shadowRoot;
                 let suggestionsListItems: any = shadow?.getElementById("suggestions-list")?.children;
 
@@ -3910,10 +2748,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                             <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="incident-details-path">
                                 <label>
                                     <span
-                                        onClick={() => this.props.onBackClick("")}
+                                        onClick={() => this.props.onBackClick(false)}
                                         onKeyDown={(event) => {
                                             if (event.key === constants.enterKey)
-                                                this.props.onBackClick("")
+                                                this.props.onBackClick(false)
                                         }}
                                         className="go-back">
                                         <ChevronStartIcon id="path-back-icon" />
@@ -3923,9 +2761,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                     <span>&nbsp;&nbsp;{this.props.localeStrings.formTitle}</span>
                                 </label>
                             </div>
-                            <div className={`incident-details-form-area${isDarkOrContrastTheme ? " incident-details-form-area-darkcontrast" : ""}`}>
+                            <div className={`incident-details-form-area${isDarkOrContrastTheme ? " form-area-darkcontrast" : ""}`}>
                                 <div className="container">
-                                    <h2 aria-live="polite" role="alert"> <div className="incident-form-head-text">
+                                    <h2 aria-live="polite" role="alert"><div className="incident-form-head-text">
                                         {!this.props.isEditMode ?
                                             <>{this.props.localeStrings.formTitle}</>
                                             :
@@ -3939,7 +2777,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 <TooltipHost
                                                     content={this.props.localeStrings.infoIncName}
                                                     calloutProps={calloutProps}
-                                                    hostClassName="tooltip-host-class"
+                                                    styles={hostStyles}
                                                 >
                                                     <Icon aria-label="Info" tabIndex={0} role="button" iconName="Info" className="incNameInfoIcon" />
                                                 </TooltipHost>
@@ -3949,11 +2787,11 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     placeholder={this.props.localeStrings.phIncidentName}
                                                     fluid={true}
                                                     maxLength={constants.maxCharLengthForSingleLine}
-                                                    aria-label={this.props.localeStrings.fieldIncidentName + constants.requiredAriaLabel}
                                                     onChange={(evt) => this.onTextInputChange(evt, "incidentName")}
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentName ? this.state.incDetailsItem.incidentName : '') : ''}
                                                     className="incident-details-input-field"
                                                     successIndicator={false}
+                                                    aria-label={this.props.localeStrings.fieldIncidentName + constants.requiredAriaLabel}
                                                 />
                                                 {this.state.inputValidation.incidentNameHasError && (
                                                     <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentNameRequired}</label>
@@ -3962,7 +2800,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentNameRegex}</label>
                                                 )}
                                             </div>
-                                            <div className="incident-grid-item" ref={this.incTypeRef}>
+                                            <div className="incident-grid-item">
                                                 <label className="FormInput-label">{this.props.localeStrings.fieldIncidentType}</label>
                                                 {this.props.isEditMode ?
                                                     <FormDropdown
@@ -4015,7 +2853,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                 ariaLabel={constants.startDateAriaLabel + constants.requiredAriaLabel}
                                                                 className="incident-datepicker"
                                                                 formatDate={this.onFormatDate}
-                                                                calloutProps={{ className: `incidentdatepicker-callout${this.props.currentThemeName === constants.darkMode ? " incidentdatepicker-callout-dark" : `${this.props.currentThemeName === constants.contrastMode ? " incidentdatepicker-callout-contrast" : ""}`}` }}
+                                                                calloutProps={{ className: `incidentdatepicker-callout${this.props.currentThemeName === constants.darkMode ? " incidentdatepicker-callout-dark" : `${this.props.currentThemeName === constants.contrastMode ? " incidentdatepicker-callout-contrast":""}`}`}}
                                                             />
                                                             <TimePicker
                                                                 dateAnchor={this.state.incDetailsItem.startDate}
@@ -4039,8 +2877,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 <label className="FormInput-label">{this.props.localeStrings.fieldIncidentStatus}</label>
                                                 <ComboBox
                                                     placeholder={this.props.localeStrings.phIncidentStatus}
-                                                    options={this.state.dropdownOptions["statusOptions"] ? this.statusOptions(this.state.dropdownOptions["statusOptions"]) : []}
-                                                    selectedKey={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentStatus ? this.state.incDetailsItem.incidentStatus.id : "") : ""}
+                                                    options={this.state.dropdownOptions["statusOptions"] ? this.options(this.state.dropdownOptions["statusOptions"]) : []}
+                                                    selectedKey={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentStatus ? this.state.incDetailsItem.incidentStatus : constants.active) : constants.active}
                                                     onChange={this.onIncidentStatusChange}
                                                     className={"incident-status-dropdown"}
                                                     useComboBoxAsMenuWidth={true}
@@ -4055,13 +2893,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.statusRequired}</label>
                                                 )}
                                             </div>
-                                            <div className="incident-grid-item" ref={this.incCommanderRef}>
+                                            <div className="incident-grid-item">
                                                 <label className="FormInput-label">{this.props.localeStrings.fieldIncidentCommander}</label>
-
                                                 <TooltipHost
                                                     content={this.props.localeStrings.infoIncCommander}
                                                     calloutProps={calloutProps}
-                                                    hostClassName="tooltip-host-class"
+                                                    styles={hostStyles}
                                                 >
                                                     <Icon aria-label="Info" tabIndex={0} role="button" iconName="Info" className="incCommanderInfoIcon" />
                                                 </TooltipHost>
@@ -4081,9 +2918,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 />
                                                 {this.state.inputValidation.incidentCommandarHasError && (
                                                     <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentCommanderRequired}</label>
-                                                )}
-                                                {this.state.incCommanderHasRegexError && (
-                                                    <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.guestUsersNotAllowedAsIncCommanderErrorMsg}</label>
                                                 )}
                                             </div>
                                             <div className="incident-grid-item">
@@ -4119,6 +2953,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.incidentDesc ? this.state.incDetailsItem.incidentDesc : '') : ''}
                                                     className="incident-details-description-area"
                                                     ref={this.incidentDescription}
+
                                                 />
                                                 {this.state.inputValidation.incidentDescriptionHasError && (
                                                     <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.incidentDescRequired}</label>
@@ -4183,6 +3018,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         maxLength={constants.maxCharLengthForMultiLine}
                                                         onChange={(evt) => this.onTextInputChange(evt, "reasonForUpdate")}
                                                         className="incident-details-reason-update-area"
+
                                                     />
                                                     {this.state.inputValidation.incidentReasonForUpdateHasError && (
                                                         <label aria-live="polite" role="alert" className="message-label">{this.props.localeStrings.reasonForUpdateRequired}</label>
@@ -4193,7 +3029,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                     </Row>
                                     <h2><div className="incident-form-head-text">{this.props.localeStrings.headerRoleAssignment}</div></h2>
                                     <Row xs={1} sm={1} md={2}>
-                                        <Col md={4} sm={8} xs={12}>
+                                        <Col md={6} sm={8} xs={12}>
                                             <div className="incident-grid-item">
                                                 <label className="FormInput-label">{this.props.localeStrings.fieldAdditionalRoles}</label>
                                                 <FormDropdown
@@ -4244,10 +3080,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 </>
                                                 :
                                                 <>
-                                                    <div className="incident-grid-item" ref={this.normalSearchUserRef}>
+                                                    <div className="incident-grid-item">
                                                         <label className="FormInput-label">{this.props.localeStrings.fieldSearchUser}</label>
-                                                        <>{this.iconWithTooltip("info", this.props.localeStrings.roleUserInfoTooltipContent, "role-user-info-icon")}</>
                                                         <PeoplePicker
+                                                            title={this.props.localeStrings.fieldSearchUser}
                                                             ariaLabel={this.props.localeStrings.fieldSearchUser + constants.requiredAriaLabel}
                                                             selectionMode="multiple"
                                                             type={PersonType.person}
@@ -4256,31 +3092,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             placeholder={this.props.localeStrings.phSearchUser}
                                                             className="incident-details-people-picker"
                                                             selectedPeople={this.state.selectedUsers}
-                                                            title={this.props.localeStrings.fieldSearchUser}
                                                             ref={this.searchUser}
                                                             onKeyDown={this.setSearchUserAttributes}
                                                             onClick={this.setSearchUserAttributes}
                                                         />
-                                                        {this.state.secIncCommanderUserHasRegexError && (
-                                                            <label className="message-label">{this.props.localeStrings.guestUsersNotAllowedAsSecIncCommanderErrorMsg}</label>
-                                                        )}
-                                                    </div>
-                                                    <div className="incident-grid-item" ref={this.normalSearchLeadRef}>
-                                                        <label className="lead-people-picker">{this.props.localeStrings.roleLeadLabel}</label>
-                                                        <PeoplePicker
-                                                            ariaLabel={this.props.localeStrings.roleLeadLabel}
-                                                            selectionMode="single"
-                                                            type={PersonType.person}
-                                                            userType={UserType.user}
-                                                            selectionChanged={this.handleAssignedLeadChange}
-                                                            placeholder={this.props.localeStrings.phSearchUser}
-                                                            className="incident-details-people-picker"
-                                                            selectedPeople={this.state.selectedLead}
-                                                            title={this.props.localeStrings.roleLeadLabel}
-                                                        />
-                                                        {this.state.secIncCommanderLeadHasRegexError && (
-                                                            <label className="message-label">{this.props.localeStrings.guestUsersNotAllowedAsSecIncCommanderErrorMsg}</label>
-                                                        )}
                                                     </div>
                                                     <div className="incident-grid-item">
                                                         <Checkbox
@@ -4288,7 +3103,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             label={this.props.localeStrings.roleCheckboxTooltip}
                                                             ariaLabel={this.props.localeStrings.roleCheckboxTooltip}
                                                             checked={this.state.saveDefaultRoleCheck}
-                                                            onChange={(_ev, isChecked) => this.setState({
+                                                            onChange={(ev, isChecked) => this.setState({
                                                                 saveDefaultRoleCheck: isChecked
                                                             })}
                                                         />
@@ -4313,36 +3128,36 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 </>
                                             }
                                         </Col>
-                                        <Col md={8} sm={12} xs={12}>
+                                        <Col md={6} sm={8} xs={12}>
                                             <Container as="table" className="role-assignment-table">
-                                                <Row as="tr" xs={3} sm={3} md={3} className={`role-grid-thead${isDarkOrContrastTheme ? " table-header-darkcontrast" : ""}`}>
+                                                <Row as="tr" xs={3} sm={3} md={3} className={`role-grid-thead${isDarkOrContrastTheme ? " table-header-darkcontrast" : ""}`}                                                            >
                                                     <Col as="th" md={3} sm={3} xs={3} key={0}>{this.props.localeStrings.headerRole}</Col>
                                                     <Col as="th" md={3} sm={3} xs={3} key={1} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
-                                                    <Col as="th" md={3} sm={3} xs={3} key={2} className="thead-border-left">{this.props.localeStrings.leadLabel}</Col>
-                                                    <Col as="th" md={1} sm={1} xs={1} key={3} className="thead-border-left col-center">
-                                                        <PeopleCheckmark24Regular className="role-header-icon" title={this.props.localeStrings.roleCheckboxTooltip} />
+                                                    <Col as="th" md={2} sm={2} xs={2} key={2} className="thead-border-left col-center">
+                                                        <img
+                                                            src={require("../assets/Images/AddRole.svg").default}
+                                                            alt="Add Role Icon"
+                                                            className="role-icon"
+                                                            title={this.props.localeStrings.roleCheckboxTooltip}
+                                                        />
                                                     </Col>
-                                                    <Col as="th" md={1} sm={1} xs={1} key={4} className="thead-border-left col-center">
-                                                        <PeopleEdit24Regular className="role-header-icon" title={this.props.localeStrings.headerEdit} />
-                                                    </Col>
-                                                    <Col as="th" md={1} sm={1} xs={1} key={5} className="thead-border-left col-center">
-                                                        <Delete24Regular title={this.props.localeStrings.headerDelete} className="role-header-icon" />
-                                                    </Col>
+                                                    <Col as="th" md={2} sm={2} xs={2} key={3} className="thead-border-left col-center">{this.props.localeStrings.headerEdit}</Col>
+                                                    <Col as="th" md={2} sm={2} xs={2} key={4} className="thead-border-left col-center">{this.props.localeStrings.headerDelete}</Col>
                                                 </Row>
+
                                                 {this.state.roleAssignments.map((item, index) => (
                                                     <>
                                                         {this.state.isRoleInEditMode[index] ?
                                                             <>
-                                                                <Row as="tr" xs={4} sm={4} md={4} key={"edit-" + item.role} className="role-grid-tbody">
+                                                                <Row as="tr" xs={3} sm={3} md={3} key={index} className="role-grid-tbody">
                                                                     <Col as="td" md={10} sm={8} xs={8}>
-                                                                        <label className="role-grid-tbody-peoplepicker-label"> {this.props.localeStrings.headerUsers}: </label>
                                                                         <PeoplePicker
-                                                                            ariaLabel={this.props.localeStrings.fieldSearchUser}
                                                                             title={this.props.localeStrings.fieldSearchUser}
+                                                                            ariaLabel={this.props.localeStrings.fieldSearchUser}
                                                                             selectionMode="multiple"
                                                                             type={PersonType.person}
                                                                             userType={UserType.user}
-                                                                            selectionChanged={(selectedValue) => this.handleAssignedUserChangeInEditMode(selectedValue, index)}
+                                                                            selectionChanged={this.handleAssignedUserChangeInEditMode}
                                                                             placeholder={this.props.localeStrings.phSearchUser}
                                                                             className="incident-details-people-picker"
                                                                             selectedPeople={this.state.selectedUsersInEditMode}
@@ -4351,34 +3166,12 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                             onKeyDown={this.setSearchUserEditModeAttributes}
                                                                             onClick={this.setSearchUserEditModeAttributes}
                                                                         />
-                                                                        {this.state.secIncCommanderUserInEditModeHasRegexError && (
-                                                                            <>
-                                                                                <label className="error-message-label">{this.props.localeStrings.guestUsersNotAllowedAsSecIncCommanderErrorMsg}</label>
-                                                                                <br />
-                                                                            </>
-                                                                        )}
-                                                                        <label className="role-grid-tbody-peoplepicker-label"> {this.props.localeStrings.leadLabel}: </label>
-                                                                        <PeoplePicker
-                                                                            ariaLabel={this.props.localeStrings.roleLeadLabel}
-                                                                            title={this.props.localeStrings.roleLeadLabel}
-                                                                            selectionMode="single"
-                                                                            type={PersonType.person}
-                                                                            userType={UserType.user}
-                                                                            selectionChanged={(selectedValue) => this.handleAssignedLeadChangeInEditMode(selectedValue, index)}
-                                                                            placeholder={this.props.localeStrings.phSearchUser}
-                                                                            className="incident-details-people-picker"
-                                                                            selectedPeople={this.state.selectedLeadInEditMode}
-                                                                            tabIndex={0}
-                                                                        />
-                                                                        {this.state.secIncCommanderLeadInEditModeHasRegexError && (
-                                                                            <label className="error-message-label">{this.props.localeStrings.guestUsersNotAllowedAsSecIncCommanderErrorMsg}</label>
-                                                                        )}
                                                                     </Col>
                                                                     <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
                                                                         <Save24Regular aria-label="Save"
                                                                             className="role-icon"
-                                                                            onClick={(e: any) => this.updateRoleAssignment(index)}
-                                                                            onKeyDown={(event: any) => {
+                                                                            onClick={(e) => this.updateRoleAssignment(index)}
+                                                                            onKeyDown={(event) => {
                                                                                 if (event.key === constants.enterKey)
                                                                                     this.updateRoleAssignment(index)
                                                                             }}
@@ -4390,8 +3183,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
                                                                         <Dismiss24Regular aria-label="Cancel"
                                                                             className="role-icon"
-                                                                            onClick={(e: any) => this.exitEditModeForRoles(index)}
-                                                                            onKeyDown={(event: any) => {
+                                                                            onClick={(e) => this.exitEditModeForRoles(index)}
+                                                                            onKeyDown={(event) => {
                                                                                 if (event.key === constants.enterKey)
                                                                                     this.exitEditModeForRoles(index)
                                                                             }}
@@ -4403,23 +3196,22 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                 </Row>
                                                             </>
                                                             :
-                                                            <Row as="tr" xs={3} sm={3} md={3} key={"role-table-" + item.role} className="role-grid-tbody">
+                                                            <Row as="tr" xs={3} sm={3} md={3} key={index} className="role-grid-tbody">
                                                                 <Col as="td" md={3} sm={3} xs={3}>{item.role}</Col>
                                                                 <Col as="td" md={3} sm={3} xs={3}>{item.userNamesString}</Col>
-                                                                <Col as="td" md={3} sm={3} xs={3}>{item.leadNameString}</Col>
-                                                                <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-checkbox">
+                                                                <Col as="td" md={2} sm={2} xs={2} className="col-center">
                                                                     <Checkbox
-                                                                        defaultChecked={item.saveDefault}
-                                                                        ariaLabel={this.props.localeStrings.roleCheckboxTooltip}
+                                                                        className="save-default-checkbox"
+                                                                        label=''
+                                                                        ariaLabel={this.props.localeStrings.roleCheckboxTooltip} defaultChecked={item.saveDefault}
                                                                         onChange={(ev, isChecked) => this.onChecked(ev, isChecked, index)}
-                                                                        title={this.props.localeStrings.selectRoleLabel}
                                                                     />
                                                                 </Col>
-                                                                <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
+                                                                <Col as="td" md={2} sm={2} xs={2} className="col-center">
                                                                     <PeopleEdit24Regular
                                                                         className="role-icon"
-                                                                        onClick={(e: any) => this.editRoleItem(index)}
-                                                                        onKeyDown={(event: any) => {
+                                                                        onClick={(e) => this.editRoleItem(index)}
+                                                                        onKeyDown={(event) => {
                                                                             if (event.key === constants.enterKey)
                                                                                 this.editRoleItem(index)
                                                                         }}
@@ -4428,15 +3220,14 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                         role="button"
                                                                     />
                                                                 </Col>
-                                                                <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
+                                                                <Col as="td" md={2} sm={2} xs={2} className="col-center">
                                                                     <Delete24Regular
                                                                         className="role-icon"
-                                                                        onClick={(e: any) => this.deleteRoleItem(index)}
-                                                                        onKeyDown={(event: any) => {
+                                                                        onClick={(e) => this.deleteRoleItem(index)}
+                                                                        onKeyDown={(event) => {
                                                                             if (event.key === constants.enterKey)
                                                                                 this.deleteRoleItem(index)
                                                                         }}
-
                                                                         title={this.props.localeStrings.headerDelete}
                                                                         tabIndex={0}
                                                                         role="button"
@@ -4446,6 +3237,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         }
                                                     </>
                                                 ))}
+
                                             </Container>
                                             {this.state.roleAssignments.length > 0 ?
                                                 <div className="role-assignment-table">
@@ -4454,245 +3246,19 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         label={this.props.localeStrings.incidentTypeDefaultRoleCheckboxLabel}
                                                         ariaLabel={this.props.localeStrings.incidentTypeDefaultRoleCheckboxLabel}
                                                         checked={this.state.saveIncidentTypeDefaultRoleCheck}
-                                                        onChange={(_ev, isChecked) => this.setState({ saveIncidentTypeDefaultRoleCheck: isChecked })}
+                                                        onChange={(ev, isChecked) => this.onSaveDefaultRolesChecked(ev, isChecked)}
                                                     />
                                                 </div>
                                                 : null}
                                         </Col>
                                     </Row>
-                                    <div className="incident-form-head-text">{this.props.localeStrings.assetsLabel}</div>
-                                    <Row className="inc-assets-wrapper">
-                                        <Col xl={10} lg={12}>
-                                            <div className="inc-assets-field in-assets-guest-fields">
-                                                <Toggle
-                                                    checked={this.state.toggleGuestUsers}
-                                                    label={
-                                                        <div className="tgle-btn-label">
-                                                            {this.props.localeStrings.guestUsersLabel}
-                                                            {this.iconWithTooltip(
-                                                                "Info", //Icon library name
-                                                                this.props.localeStrings.guestUsersInfoIconTooltipContent,
-                                                                "tgle-btn-info-icon" //Class name
-                                                            )}
-                                                        </div>
-                                                    }
-                                                    inlineLabel
-                                                    onChange={(_, checked: any) => this.onToggleGuestUsers(checked)}
-                                                    className="inc-assets-tgle-btn"
-                                                />
-                                                {this.state.toggleGuestUsers &&
-                                                    <div className="guest-user-fields">
-                                                        {this.state.incDetailsItem.guestUsers.map((user: IGuestUsers, idx: number) => {
-                                                            return (
-                                                                <div className="guest-field-wrapper" key={"guest-user-field-row-" + idx}>
-                                                                    <div>
-                                                                        <FormInput
-                                                                            type="text"
-                                                                            label={this.props.localeStrings.emailIdLabel}
-                                                                            placeholder={this.props.localeStrings.guestEmailIdPlaceholder}
-                                                                            fluid={true}
-                                                                            maxLength={254}
-                                                                            onChange={(_, value) => this.updateGuestUser(value, idx, "email")}
-                                                                            value={user.email}
-                                                                            className="incident-details-input-field"
-                                                                            successIndicator={false}
-                                                                        />
-                                                                        {user.hasEmailValidationError && <label className="error-message-label">
-                                                                            {this.props.localeStrings.guestemailIdValidationError}
-                                                                        </label>}
-                                                                        {user.hasEmailRegexError && <label className="error-message-label">
-                                                                            {this.props.localeStrings.guestEmailIdRegexError}
-                                                                        </label>}
-                                                                    </div>
-                                                                    <div>
-                                                                        <FormInput
-                                                                            type="text"
-                                                                            label={this.props.localeStrings.displayNameLabel}
-                                                                            placeholder={this.props.localeStrings.guestDisplayNamePlaceholder}
-                                                                            fluid={true}
-                                                                            maxLength={200}
-                                                                            onChange={(_, value) => this.updateGuestUser(value, idx, "displayName")}
-                                                                            value={user.displayName}
-                                                                            className="incident-details-input-field"
-                                                                            successIndicator={false}
-                                                                        />
-                                                                        {user.hasDisplayNameValidationError && <label className="error-message-label">
-                                                                            {this.props.localeStrings.guestDisplayNameValidationError}
-                                                                        </label>}
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {this.state.incDetailsItem.guestUsers.length < 10 &&
-                                                            <Button
-                                                                icon={<AddIcon />}
-                                                                content={this.props.localeStrings.addMoreBtnLabel}
-                                                                iconPosition="before"
-                                                                onClick={() => this.addGuestUserInput()}
-                                                                className="add-chnl-btn"
-                                                            />
-                                                        }
-                                                        {
-                                                            this.state.inputValidation.guestUsersHasError &&
-                                                            <label className="error-message-label">
-                                                                {this.props.localeStrings.guestUsersValidationError}
-                                                            </label>
-                                                        }
-                                                    </div>
-                                                }
-                                            </div>
-                                        </Col>
-                                        <Col xl={10} lg={12}>
-                                            <div className="inc-assets-field">
-                                                <Toggle
-                                                    checked={this.state.toggleCloudStorageLocation}
-                                                    label={this.props.localeStrings.cloudStorageFieldLabel}
-                                                    inlineLabel
-                                                    onChange={(_, checked: any) => this.onToggleCloudStorageLink(checked)}
-                                                    className="inc-assets-tgle-btn"
-                                                    disabled={this.state.isEditMode}
-                                                />
-                                                {this.state.toggleCloudStorageLocation &&
-                                                    <>
-                                                        <div className="cloud-link-fields">
-                                                            <div className="cloud-storage-field">
-                                                                <FormInput
-                                                                    type="text"
-                                                                    placeholder={this.props.localeStrings.cloudStorageFieldPlaceholder}
-                                                                    fluid={true}
-                                                                    onChange={(event: any) => this.onTextInputChange(event, "cloudStorageLink")}
-                                                                    value={this.state.incDetailsItem.cloudStorageLink}
-                                                                    className={this.state.isEditMode ? "incident-details-input-field disabled-input" : "incident-details-input-field"}
-                                                                    successIndicator={false}
-                                                                    title={this.state.incDetailsItem.cloudStorageLink}
-                                                                    disabled={this.state.isEditMode}
-                                                                />
-                                                                <span title={this.props.localeStrings.testCloudStorageLocation} className="cloud-icon-area">
-                                                                    <a
-                                                                        href={this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
-                                                                            new URL(this.state.incDetailsItem.cloudStorageLink).href : "/"}
-                                                                        target="_blank"
-                                                                        rel="noreferrer"
-                                                                        className={!this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
-                                                                            "disabled-link" : ""}
-                                                                    >
-                                                                        <CloudLink24Regular
-                                                                            className="cloud-icon"
-                                                                        />
-                                                                    </a>
-                                                                </span>
-                                                            </div>
-
-                                                            {this.state.inputRegexValidation.incidentCloudStorageLinkHasError &&
-                                                                <label className="error-message-label">{this.props.localeStrings.cloudStorageFieldRegexMessage}</label>}
-                                                            {this.state.inputValidation.cloudStorageLinkHasError &&
-                                                                <label className="error-message-label">{this.props.localeStrings.cloudStorageFieldErrorMessage}</label>
-                                                            }
-                                                        </div>
-                                                        {!this.state.isEditMode &&
-                                                            <Fluent9CheckBox
-                                                                label={<div className={this.state.isEditMode ? "tgle-btn-label disabled-label" : "tgle-btn-label"}>
-                                                                    {this.props.localeStrings.saveDefaultLabel}
-                                                                    {this.iconWithTooltip(
-                                                                        "Info", //Icon library name
-                                                                        this.props.localeStrings.cloudStorageFieldSaveDefaultTooltipContent,
-                                                                        "tgle-btn-info-icon" //Class name
-                                                                    )}
-                                                                </div>}
-                                                                disabled={this.state.isEditMode}
-                                                                className="assets-save-default-checkbox"
-                                                                onChange={(_: any, checked: any) => this.setState({ saveDefaultCloudStorageLink: checked })}
-                                                            />
-                                                        }
-                                                    </>
-                                                }
-                                            </div>
-
-                                        </Col>
-                                        {!this.state.isEditMode &&
-                                            <Col xl={10} lg={12}>
-                                                <div className="inc-assets-field">
-                                                    <Toggle
-                                                        checked={this.state.toggleAdditionalChannels}
-                                                        label={
-                                                            <div className="tgle-btn-label">
-                                                                {this.props.localeStrings.additionalChannelsFieldLabel}
-                                                                {this.iconWithTooltip(
-                                                                    "Info", //Icon library name
-                                                                    this.props.localeStrings.additionalChannelsFieldInfoIconTooltipContent,
-                                                                    "tgle-btn-info-icon" //Class name
-                                                                )}
-                                                            </div>
-                                                        }
-                                                        inlineLabel
-                                                        onChange={(_, checked: any) => this.onToggleAdditionChannels(checked)}
-                                                        className="inc-assets-tgle-btn"
-                                                    />
-                                                    {this.state.toggleAdditionalChannels &&
-                                                        <>
-                                                            <div className="additional-chnl-fields">
-                                                                {this.state.incDetailsItem.additionalTeamChannels.map((channel: IAdditionalTeamChannels,
-                                                                    idx: number, array: IAdditionalTeamChannels[]) => {
-                                                                    return (
-                                                                        <>
-                                                                            <div className="chnl-field-with-remove-icon">
-                                                                                <FormInput
-                                                                                    type="text"
-                                                                                    placeholder={this.props.localeStrings.additionalChannelsFieldPlaceholder}
-                                                                                    fluid={true}
-                                                                                    maxLength={constants.maxCharLengthForSingleLine}
-                                                                                    onChange={(eve, value) => this.updateAdditionalChannel(eve, value, idx)}
-                                                                                    value={channel.channelName}
-                                                                                    className="incident-details-input-field"
-                                                                                    successIndicator={false}
-                                                                                />
-                                                                                <Dismiss24Regular
-                                                                                    className="chnl-remove-icon"
-                                                                                    title={this.props.localeStrings.headerDelete}
-                                                                                    onClick={() => this.removeChannelInput(idx)}
-                                                                                />
-                                                                            </div>
-                                                                            {channel.hasRegexError && <label className="error-message-label">
-                                                                                {channel.regexErrorMessage}
-                                                                            </label>}
-                                                                        </>
-                                                                    );
-                                                                })}
-                                                                {this.state.incDetailsItem.additionalTeamChannels.length < 5 &&
-                                                                    <Button
-                                                                        icon={<AddIcon />}
-                                                                        content={this.props.localeStrings.addChannelBtnLabel}
-                                                                        iconPosition="before"
-                                                                        onClick={() => this.addChannelInput()}
-                                                                        className="add-chnl-btn"
-                                                                    />
-                                                                }
-                                                            </div>
-                                                            <Fluent9CheckBox
-                                                                label={<div className="tgle-btn-label">
-                                                                    {this.props.localeStrings.saveDefaultLabel}
-                                                                    {this.iconWithTooltip(
-                                                                        "Info", //Icon library name
-                                                                        this.props.localeStrings.additionalChannelsFieldSaveDefaultTooltipContent,
-                                                                        "tgle-btn-info-icon" //Class name
-                                                                    )}
-                                                                </div>}
-                                                                onChange={(_: any, checked: any) => this.setState({ saveDefaultAdditionalChannels: checked })}
-                                                                className="assets-save-default-checkbox"
-                                                            />
-                                                        </>
-                                                    }
-                                                </div>
-                                            </Col>
-                                        }
-                                    </Row>
                                     <br />
                                     <Row xs={1} sm={1} md={1}>
-                                        <Col md={12} sm={12} xs={12}>
+                                        <Col md={12} sm={8} xs={12}>
                                             <div className="new-incident-btn-area">
                                                 <Flex hAlign="end" gap="gap.large" wrap={true}>
                                                     <Button
-                                                        onClick={() => this.props.onBackClick("")}
+                                                        onClick={() => this.props.onBackClick(false)}
                                                         className="new-incident-back-btn"
                                                         fluid={true}
                                                         title={this.props.localeStrings.btnBack}
@@ -4706,7 +3272,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             onClick={this.updateIncidentDetails}
                                                             fluid={true}
                                                             className={`new-incident-create-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
-
                                                             title={this.props.localeStrings.btnUpdateIncident}
                                                         >
                                                             <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="" /> &nbsp;
@@ -4718,7 +3283,6 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             onClick={this.createNewIncident}
                                                             fluid={true}
                                                             className={`new-incident-create-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
-
                                                             title={this.props.localeStrings.btnCreateIncident}
                                                         >
                                                             <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="" /> &nbsp;

@@ -16,8 +16,8 @@
             height: 40px;
 
             .ui-dropdown__selected-items {
-                background-color: #FFFFFF;
-                border: 1px solid #FFFFFF;
+                background-color: var(--colorNeutralBackground1);
+                border: 1px solid var(--colorNeutralForegroundStaticInverted);
                 border-radius: 0.1875rem;
                 width: 150px;
                 height: 40px;
@@ -26,15 +26,50 @@
                     .ui-button__content {
                         position: relative;
                         top: 4px;
+                        color: var(--colorNeutralForeground1);
                     }
+                }
+            }
+
+            .ui-box {
+                .ui-icon__outline {
+                    fill: var(--colorNeutralForeground1);
                 }
             }
 
 
             .ui-list {
                 width: 100% !important;
+                background-color: var(--colorNeutralBackground1);
+
+                .ui-dropdown__item {
+                    color: var(--colorNeutralForeground1);
+                    background-color: var(--colorSubtleBackground);
+
+                    .ui-dropdown__item__header {
+                        color: var(--colorNeutralForeground1);
+                    }
+
+                    &:hover {
+                        background-color: var(--colorBrandBackgroundInvertedHover);
+
+                        .ui-dropdown__item__header {
+                            color: #000000;
+                        }
+                    }
+
+                }
             }
         }
+    }
+
+    .order-label {
+        text-align: left;
+        font: normal normal normal 16px/21px Segoe UI;
+        letter-spacing: 0px;
+        color: var(--colorNeutralForeground1);
+        opacity: 1;
+        margin-bottom: 0.25rem;
     }
 
     .team-name-config-input-field {
@@ -42,7 +77,7 @@
             text-align: left;
             font: normal normal normal 16px/21px Segoe UI;
             letter-spacing: 0px;
-            color: #000000;
+            color: var(--colorNeutralForeground1);
             opacity: 1;
         }
 
@@ -51,14 +86,25 @@
             opacity: 1;
             width: 180px;
             height: 40px;
-            color: #000000;
-            background-color: #FFFFFF;
+            color: var(--colorNeutralForeground1);
+            background-color: var(--colorNeutralBackground1);
+            border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
+            &:focus {
+                border-bottom-color: var(--colorNeutralStrokeAccessibleSelected);
+                border-bottom-left-radius: 2px;
+                border-bottom-right-radius: 2px;
+                border-bottom-width: 2px;
+                border-top-color: var(--colorSubtleBackground);
+                border-left-color: var(--colorSubtleBackground);
+                border-right-color: var(--colorSubtleBackground);
+            }
         }
 
         input::placeholder {
             font: normal normal normal 14px/21px Segoe UI;
-            color: #979593;
-            opacity: 1;
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
         }
     }
 
@@ -78,7 +124,7 @@
             text-align: left;
             font: normal normal normal 16px/21px Segoe UI;
             letter-spacing: 0px;
-            color: #33344A;
+            color: var(--colorNeutralForeground1);
             opacity: 1;
             margin-bottom: 30px;
         }
@@ -92,16 +138,16 @@
         .team-name-config-save-btn {
             width: 158px;
             height: 44px;
-            background: #6264A7 0% 0% no-repeat padding-box;
+            background: 0% 0% no-repeat padding-box var(--colorBrandBackground);
             box-shadow: 0px 3px 6px #00000029;
-            border: 1px solid #6264A7;
+            border: 1px solid var(--colorBrandBackground);
             opacity: 1;
             cursor: pointer;
 
             .team-name-config-save-btn-label {
                 font: normal normal 600 16px/24px Segoe UI;
                 letter-spacing: 0px;
-                color: #FFFFFF;
+                color: var(--colorNeutralForegroundOnBrand);
                 opacity: 1;
                 cursor: pointer;
             }
@@ -109,6 +155,7 @@
 
         .team-name-config-save-btn:hover {
             border: 1px solid rgb(200, 198, 196);
+            background: var(--colorBrandBackgroundHover);
         }
 
         .team-name-config-back-btn {
@@ -128,6 +175,14 @@
                 opacity: 1;
                 cursor: pointer;
             }
+        }
+
+        .team-name-config-back-btn:hover {
+            border: 1px solid var(--colorBrandBackgroundHover);
+        }
+
+        .back-btn-contrast:hover {
+            background: var(--colorBrandBackgroundHover);
         }
     }
 
@@ -171,7 +226,7 @@ div[class="team-name-config"] {
             margin: 5px auto;
             text-align: center;
             font: normal normal 400 14px/24px Segoe UI;
-            color: #33344A;
+            color: var(--colorNeutralForeground1) !important;
             opacity: 1;
 
             span[class="back-label"] {
@@ -179,6 +234,16 @@ div[class="team-name-config"] {
                 position: relative;
                 bottom: 1px;
                 margin-left: 1px;
+
+                &:hover {
+                    color: var(--colorBrandForegroundLinkHover);
+                }
+            }
+
+            span[class="back-label"]:focus-visible {
+                outline: 2px solid var(--colorBrandForeground2Pressed);
+                border-radius: 3px;
+                outline-offset: 1px;
             }
 
             span[class="go-back"] {
@@ -239,6 +304,18 @@ div[class="team-name-config"] {
         }
     }
 
+    div[class~="form-area-darkcontrast"] {
+        background: var(--colorNeutralBackground1);
+        padding-bottom: 6rem;
 
+        div[class="team-name-config-page-heading"] {
+            text-align: left;
+            font: normal normal 400 22px/32px Segoe UI;
+            letter-spacing: 0px;
+            opacity: 1;
+            padding-bottom: 12px;
+            padding-top: 12px;
+        }
+    }
 
 }

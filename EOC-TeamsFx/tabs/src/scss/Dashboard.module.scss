@@ -92,7 +92,6 @@
         i {
             margin-top: 15px;
             color: var(--colorStrokeFocus2);
-            font-weight: bolder;
         }
     }
 
@@ -112,15 +111,9 @@
             display: block;
         }
 
-        .manage-label,
-        i {
+        .manage-label {
             color: #6264A7;
         }
-    }
-
-    mgt-person[class="incident-commander-person-card"] {
-        --color: var(--colorNeutralForeground1) !important;
-        width: -webkit-fill-available;
     }
 }
 
@@ -151,17 +144,12 @@ div[class~="dashboard-search-btn-area"] {
         }
 
         input[type="text"]::placeholder {
-            font: normal normal normal 13px/24px Segoe UI;
+            font: normal normal normal 14px/24px Segoe UI;
             color: var(--colorBrandForeground2Pressed);
-            padding-left: 0.5%;
+            padding-left: 1%;
             opacity: 0.7;
-            letter-spacing: -0.5px;
         }
 
-    }
-
-    div[class~="settings-loader"] {
-        width: 300px;
     }
 
     button[class~="create-incident-btn"] {
@@ -201,7 +189,7 @@ div[class~="dashboard-search-btn-area"] {
         }
     }
 
-    button[class~="create-incident-btn"]:hover {
+    button[class="create-incident-btn"]:hover {
         opacity: 0.9;
         background: var(--colorBrandBackgroundHover);
     }
@@ -357,24 +345,14 @@ div[class~="dashboard-pivot-container"] {
                         background: #33344A;
 
                         th {
-                            font: normal normal 600 15px/24px Segoe UI;
+                            font: normal normal 600 16px/24px Segoe UI;
                             color: #FFFFFF;
                             border-right: 1px solid #FFFFFF;
                             border-bottom: hidden;
                             padding-left: 1%;
-                            letter-spacing: -0.5px;
-
-                            div[class~="header-div-wrapper"] {
-                                display: flex;
-                                align-items: center;
-
-                                span[class~="header-span-text"] {
-                                    width: auto;
-                                    overflow: hidden;
-                                    white-space: nowrap;
-                                    text-overflow: ellipsis;
-                                }
-                            }
+                            overflow: hidden;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
 
                             button[class="sort-header"] {
                                 background: inherit;
@@ -394,17 +372,16 @@ div[class~="dashboard-pivot-container"] {
                                 outline-offset: 2px;
                             }
 
-                            div[class="sort-order"] {
+                            span[class="sort-order"] {
                                 vertical-align: middle;
                                 position: relative;
-                                margin: 4px 3.5px 0px;
-                                display: flex;
-                                width: 20px;
+                                margin: 10px 3.5px;
                             }
 
                             span[class="dropdown-caret"] {
-                                margin: 0px 0 0px 5px;
+                                margin: 10px 0 10px 5px;
                                 color: #ffffff;
+                                display: inline-block;
                                 margin-left: 2px;
                                 border-top: 4px dashed;
                                 border-right: 4px solid transparent;
@@ -414,7 +391,8 @@ div[class~="dashboard-pivot-container"] {
 
                             span[class="dropup-caret"] {
                                 color: #ffffff;
-                                margin: 0;
+                                margin: 10px 0;
+                                display: inline-block;
                                 margin-left: 2px;
                                 border-bottom: 4px dashed;
                                 border-top: 0;
@@ -425,19 +403,19 @@ div[class~="dashboard-pivot-container"] {
                         }
 
                         th:nth-child(1) {
-                            width: 10.5%;
+                            width: 14%;
                         }
 
                         th:nth-child(2) {
-                            width: 18%;
+                            width: 22%;
                         }
 
                         th:nth-child(3) {
-                            width: 10%;
+                            width: 9%;
                         }
 
                         th:nth-child(4) {
-                            width: 18%;
+                            width: 17%;
                         }
 
                         th:nth-child(5) {
@@ -445,24 +423,20 @@ div[class~="dashboard-pivot-container"] {
                         }
 
                         th:nth-child(6) {
-                            width: 11%;
+                            width: 12%;
                         }
 
                         th:nth-child(7) {
-                            width: 14%;
+                            width: 16%;
                         }
 
                         th:nth-child(8) {
-                            width: 100px;
+                            width: 80px;
                         }
 
                         th:nth-child(5),
                         th:nth-child(8) {
                             text-align: center;
-
-                            div[class~="header-div-wrapper"] {
-                                display: block;
-                            }
                         }
 
                         th:nth-last-child(1) {
@@ -481,8 +455,7 @@ div[class~="dashboard-pivot-container"] {
                     display: block;
                     overflow-y: overlay;
                     overflow-x: hidden;
-                    min-height: 44px;
-                    max-height: 442px;
+                    height: 442px;
 
                     tr {
                         border-bottom: hidden;
@@ -504,22 +477,9 @@ div[class~="dashboard-pivot-container"] {
                                 width: 24px;
                                 height: 24px;
                                 cursor: pointer;
-                                margin-left: 4px;
                             }
 
                             img[class~="grid-edit-icon"]:focus-visible {
-                                outline: 2px solid var(--colorBrandForeground2Pressed);
-                                border-radius: 3px;
-                                outline-offset: 1px;
-                            }
-
-                            img[class="grid-active-bridge-icon"] {
-                                width: 24px;
-                                height: 24px;
-                                cursor: pointer;
-                            }
-
-                            img[class="grid-active-bridge-icon"]:focus-visible {
                                 outline: 2px solid var(--colorBrandForeground2Pressed);
                                 border-radius: 3px;
                                 outline-offset: 1px;
@@ -530,7 +490,7 @@ div[class~="dashboard-pivot-container"] {
                                 height: 24px;
                                 cursor: pointer;
                                 margin-top: 1px;
-                                margin-left: 4px;
+                                margin-left: 12px;
                             }
 
                             img[class="grid-version-history-icon"]:focus-visible {
@@ -558,19 +518,19 @@ div[class~="dashboard-pivot-container"] {
                         }
 
                         td:nth-child(1) {
-                            width: 10.5%;
+                            width: 14%;
                         }
 
                         td:nth-child(2) {
-                            width: 18%;
+                            width: 22%;
                         }
 
                         td:nth-child(3) {
-                            width: 10%;
+                            width: 9%;
                         }
 
                         td:nth-child(4) {
-                            width: 18%;
+                            width: 17%;
                         }
 
                         td:nth-child(5) {
@@ -578,20 +538,19 @@ div[class~="dashboard-pivot-container"] {
                         }
 
                         td:nth-child(6) {
-                            width: 11%;
+                            width: 12%;
                         }
 
                         td:nth-child(7) {
-                            width: 14%;
+                            width: 16%;
                         }
 
                         td:nth-child(8) {
-                            width: 100px;
+                            width: 80px;
                         }
 
 
-                        td:nth-child(1),
-                        td:nth-child(2) {
+                        td:nth-child(1) {
                             color: var(--colorBrandForegroundLinkHover);
                             font-weight: bold;
 

@@ -1,4 +1,5 @@
 import React from "react";
+import "./App.css";
 import * as microsoftTeams from "@microsoft/teams-js";
 
 /**

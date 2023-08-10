@@ -36,23 +36,18 @@
     }
 
     div.message-bar {
-        div.ms-MessageBar-content {
-            padding-left: 0;
-            padding-right: 0;
+        span {
+            font: normal normal normal 16px/21px Segoe UI;
+        }
 
-            span {
-                font: normal normal normal 16px/21px Segoe UI;
-            }
+        i {
+            font-size: 20px;
+            margin-top: 1px;
+        }
 
-            i {
-                font-size: 20px;
-                margin-top: 1px;
-            }
-
-            i[data-icon-name="Clear"] {
-                font-size: 15px;
-                margin-top: 5px;
-            }
+        i[data-icon-name="Clear"] {
+            font-size: 15px;
+            margin-top: 5px;
         }
     }
 
@@ -65,9 +60,9 @@ div[class~="eoc-header"] {
     width: 100%;
     height: auto;
     max-height: 100vh;
-    background: #464775 0% 0% no-repeat padding-box;
     opacity: 1;
     padding: 19px 41px;
+    background: #464775 0% 0% no-repeat padding-box;
 
     img[class="ms-logo"] {
         width: 32px;
@@ -99,14 +94,10 @@ div[class~="eoc-header"] {
 
 div[class~="sub-header"] {
     opacity: 1;
-    background-color: #464775;
+    background-color: var(--colorNeutralBackground1);
     height: 69px;
     min-width: 100%;
     padding-top: 18px;
-    background-image: url('../assets/Images/BannerImageDefault.svg');
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center center;
 
     div[id="sub-heading"] {
         text-align: left;
@@ -117,14 +108,25 @@ div[class~="sub-header"] {
     }
 }
 
-div[class~="sub-header-dark"] {
-    background-color: var(--colorNeutralBackground1);
-    background-image: url('../assets/Images/BannerImageDark.svg');
+div[class~="welcome-image-default"] {
+    background-image: url('../assets/Images/BannerImageDefault.svg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
 }
 
-div[class~="sub-header-contrast"] {
-    background-color: var(--colorNeutralBackground1);
+div[class~="welcome-image-dark"] {
+    background-image: url('../assets/Images/BannerImageDark.svg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
+}
+
+div[class~="welcome-image-contrast"] {
     background-image: url('../assets/Images/BannerImageContrast.svg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
 }
 
 div[role="tooltip"]>div {

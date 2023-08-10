@@ -15,8 +15,6 @@ import * as constants from "../common/Constants";
 import * as graphConfig from '../common/graphConfig';
 import siteConfig from '../config/siteConfig.json';
 import "../scss/IncidentHistory.module.scss";
-//import { PDFDownloadLink, Page, Text, View, Document } from '@react-pdf/renderer';
-//import { styles as PDFStyles } from '../assets/styles/IncidentHistoryPDFStyles';
 
 //Creates table control with fixed coloumns feature using react table control.
 const ReactTableFixedColumns = withFixedColumns(ReactTable);
@@ -36,13 +34,10 @@ export interface IIncidentHistoryState {
     isListView: boolean;
     gridData: any[];
     isDesktop: boolean;
-    showRoleLeads: boolean;
-    roleLeadDetails: any;
-    versionHistoryPDFData: any
 }
 export interface IIncidentHistoryProps {
     localeStrings: any;
-    onBackClick(showMessageBar: string): void;
+    onBackClick(showMessageBar: boolean): void;
     siteId: string;
     graph: Client;
     appInsights: ApplicationInsights;
@@ -55,14 +50,12 @@ export interface IIncidentHistoryProps {
 
 export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, IIncidentHistoryState>  {
     private listRef: React.RefObject<IList>;
-    private detailsListRef: React.RefObject<HTMLDivElement>;
     private itemHeight = constants.itemHeight;
     private numberOfItemsOnPage = constants.numberOfItemsOnPage;
 
     constructor(props: any) {
         super(props);
         this.listRef = React.createRef();
-        this.detailsListRef = React.createRef();
         this.state = {
             incidentVersionData: [],
             showRoles: false,
@@ -72,10 +65,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             seeAllVersions: false,
             isListView: true,
             gridData: [],
-            isDesktop: true,
-            showRoleLeads: false,
-            roleLeadDetails: [],
-            versionHistoryPDFData: []
+            isDesktop: true
         }
 
         this.getVersions = this.getVersions.bind(this);
@@ -102,13 +92,10 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         window.addEventListener("resize", this.resize.bind(this));
         this.resize();
         this.getVersions();
-        //set title attribute to pdf download link
-        // const pdfLink = document.getElementById("incident-history-download-link")?.getElementsByClassName("download-pdf")[0];
-        // pdfLink?.setAttribute("title", this.props.localeStrings.downloadPDFLinkTooltipContent);
     }
 
     //Component life cycle componentDidUpdate method.
-    public componentDidUpdate(_prevProps: IIncidentHistoryProps, prevState: IIncidentHistoryState) {
+    public componentDidUpdate(prevProps: IIncidentHistoryProps, prevState: IIncidentHistoryState) {
         if (prevState.selectedItem !== this.state.selectedItem) {
             this.listRef.current?.scrollToIndex(
                 this.state.selectedItem ? this.state.selectedItem : 0,
@@ -116,23 +103,13 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                 ScrollToMode.top
             );
         }
-        //Format version data for pdf
-        if (prevState.incidentVersionData !== this.state.incidentVersionData && this.state.incidentVersionData.length > 0) {
-            const versionHistoryArray: any = [];
-            this.state.incidentVersionData.forEach((versionData: any, index: any) => {
-                versionHistoryArray.push(this.formatVersionData(versionData, index, true));
-            });
-            this.setState({ versionHistoryPDFData: versionHistoryArray });
-        }
     }
 
     //Get Incident Versions
     private async getVersions() {
         try {
             //graph endpoint to get all versions
-            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${this.props.incidentId}/versions?$expand=fields
-            ($select=StatusLookupId,Status,id,IncidentId,IncidentName,IncidentCommander,Location,StartDateTime,
-            Modified,Description,IncidentType,RoleAssignment,Severity,BridgeID,ReasonForUpdate,IncidentStatus,RoleLeads,CloudStorageLink)`;
+            let graphEndpoint = `${graphConfig.spSiteGraphEndpoint}${this.props.siteId}/lists/${siteConfig.incidentsList}/items/${this.props.incidentId}/versions`;
             const versionsData = await this.dataService.getVersionsData(graphEndpoint, this.props.graph);
 
             this.setState({
@@ -153,9 +130,9 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     }
 
     //Format version data when on click of each version in the list view.
-    private formatVersionData(versionData: any, index: any, forPDf = false) {
+    private formatVersionData(versionData: any, index: any) {
         try {
-            let diff = require('deep-diff');
+            var diff = require('deep-diff');
             let currentVersionData = versionData;
             let prevVersionData: any;
             if (index !== this.state.incidentVersionData.length - 1) {
@@ -163,15 +140,12 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             } else {
                 prevVersionData = {};
             }
-            let changes = diff(currentVersionData, prevVersionData);
-
-            let formattedIncidentsData: Array<IVersionItem> = new Array<IVersionItem>();
-
-            changes?.forEach((item: any) => {
+            var changes = diff(currentVersionData, prevVersionData);
+            var formattedIncidentsData: Array<IVersionItem> = new Array<IVersionItem>();
+            changes.forEach((item: any) => {
                 if ((item.path[0] !== constants.modifiedDate &&
                     item.path[0] !== constants.lastModifiedBy) &&
                     item.path[0] !== constants.roleAssignmentsObj &&
-                    item.path[0] !== constants.roleLeadsObj &&
                     (item.lhs !== undefined || item.rhs !== undefined)
                 ) {
 
@@ -185,20 +159,11 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     });
                 }
             });
-            if (forPDf) {
-                return {
-                    modifiedOn: versionData.modifiedDate,
-                    modifiedBy: versionData.lastModifiedBy,
-                    versionData: formattedIncidentsData
-                };
-            }
-            else {
-                this.setState({
-                    selectedItem: index,
-                    versionDetails: formattedIncidentsData
-                });
-                return null;
-            }
+
+            this.setState({
+                selectedItem: index,
+                versionDetails: formattedIncidentsData
+            });
         } catch (error) {
             console.error(
                 constants.errorLogPrefix + "IncidentHistory_Format_Version_Data\n",
@@ -212,7 +177,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
     //Format version data for table view. 
     private formatGridData() {
         try {
-            let diff = require('deep-diff');
+            var diff = require('deep-diff');
             let dataDifference: any = [];
 
             for (let i = 0; i < this.state.incidentVersionData.length; i++) {
@@ -224,25 +189,19 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     prevVersionData = {};
                 }
                 currentVersionData = this.state.incidentVersionData[i];
-                let changes = diff(currentVersionData, prevVersionData);
-
+                var changes = diff(currentVersionData, prevVersionData);
                 let obj: { [x: string]: any; } = {};
-                changes?.forEach((item: { path: (string | number)[]; lhs: any; }) => {
+                changes.forEach((item: { path: (string | number)[]; lhs: any; }) => {
                     if (item.path[0] === constants.roleAssignmentsObj) {
                         obj[constants.roleAssignmentsObj] = currentVersionData[constants.roleAssignmentsObj];
-                    }
-                    else if (item.path[0] === constants.roleLeadsObj) {
-                        obj[constants.roleLeadsObj] = currentVersionData[constants.roleLeadsObj];
                     }
                     else {
                         obj[item.path[0]] = item.lhs
                     }
                 });
-                if (changes) {
-                    //Explicitly adding ModifiedBy to the array since it might have same value in previous version which will not be captured in the difference
-                    obj[constants.lastModifiedBy] = currentVersionData[constants.lastModifiedBy];
-                    dataDifference.push(obj);
-                }
+                //Explicitly adding ModifiedBy to the array since it might have same value in previous version which will not be captured in the difference
+                obj[constants.lastModifiedBy] = currentVersionData[constants.lastModifiedBy];
+                dataDifference.push(obj);
             }
             this.setState({
                 gridData: dataDifference
@@ -279,9 +238,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         try {
             this.setState({
                 showRoles: true,
-                roleDetails: value,
-                showRoleLeads: false,
-                roleLeadDetails: []
+                roleDetails: value
             });
 
         } catch (error) {
@@ -294,33 +251,10 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
         }
     }
 
-    //Load assigned role leads of the incident when on click of view role lead button in table view.
-    private loadRoleLeads(value: any) {
-        try {
-            this.setState({
-                showRoleLeads: true,
-                roleLeadDetails: value,
-                showRoles: false,
-                roleDetails: [],
-            });
-
-        } catch (error) {
-            console.error(
-                constants.errorLogPrefix + "IncidentHistory_Load_Role_Leads\n",
-                JSON.stringify(error)
-            );
-            // Log Exception
-            this.dataService.trackException(this.props.appInsights, error, constants.componentNames.IncidentHistoryComponent, 'IncidentHistory_Load_Role_Leads', this.props.userPrincipalName);
-        }
-    }
-
     //Hide roles popup when onclick of cancel/back button.
     private hideRoles() {
         this.setState({
-            showRoles: false,
-            showRoleLeads: false,
-            roleDetails: [],
-            roleLeadDetails: []
+            showRoles: false
         })
     }
 
@@ -389,18 +323,18 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         Header: () => <div title={this.props.localeStrings.date}>{this.props.localeStrings.date}</div>,
                         accessor: "modifiedDate",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.date}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 210,
+                        width: 210
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.modifiedBy}>{this.props.localeStrings.modifiedBy}</div>,
                         accessor: "lastModifiedBy",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.modifiedBy}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
@@ -415,56 +349,56 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         Header: () => <div title={this.props.localeStrings.fieldIncidentName}>{this.props.localeStrings.fieldIncidentName}</div>,
                         accessor: "incidentName",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldIncidentName}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200,
+                        width: 200
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldIncidentStatus}>{this.props.localeStrings.fieldIncidentStatus}</div>,
                         accessor: "status",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldIncidentStatus}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200,
+                        width: 200
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldSeverity}>{this.props.localeStrings.fieldSeverity}</div>,
                         accessor: "severity",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldSeverity}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 150,
+                        width: 200
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldLocation}>{this.props.localeStrings.fieldLocation}</div>,
                         accessor: "location",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldLocation}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200,
+                        width: 200
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldIncidentCommander}>{this.props.localeStrings.fieldIncidentCommander}</div>,
                         accessor: "incidentCommander",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldIncidentCommander}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
-                        width: 200,
+                        width: 200
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.roles}>{this.props.localeStrings.roles}</div>,
@@ -473,36 +407,19 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                             <Button
                                 tabIndex={0}
                                 onClick={() => this.loadRoles(value)}
-                                title={this.props.localeStrings.viewLabel}
-                                aria-label={`${this.props.localeStrings.roles} ${this.props.localeStrings.viewLabel}`}
+                                aria-label={this.props.localeStrings.roles + this.props.localeStrings.viewLabel}
                                 text
                                 className="grid-view-assigned-roles"
                             >
                                 {this.props.localeStrings.viewLabel}
                             </Button> : "",
-                        width: 100,
-                    },
-                    {
-                        Header: () => <div title={this.props.localeStrings.roleLeadsLabel}>{this.props.localeStrings.roleLeadsLabel}</div>,
-                        accessor: "roleLeadsObj",
-                        Cell: ({ value }: any) => value ?
-                            <Button
-                                tabIndex={0}
-                                onClick={() => this.loadRoleLeads(value)}
-                                title={this.props.localeStrings.viewLabel}
-                                aria-label={`${this.props.localeStrings.roleLeadsLabel} ${this.props.localeStrings.viewLabel}`}
-                                text
-                                className="grid-view-assigned-roles"
-                            >
-                                {this.props.localeStrings.viewLabel}
-                            </Button> : "",
-                        width: 120,
+                        width: 100
                     },
                     {
                         Header: () => <div title={this.props.localeStrings.fieldDescription}>{this.props.localeStrings.fieldDescription}</div>,
                         accessor: "incidentDescription",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldDescription}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
@@ -513,29 +430,8 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                         Header: () => <div title={this.props.localeStrings.fieldReasonForUpdate}>{this.props.localeStrings.fieldReasonForUpdate}</div>,
                         accessor: "reasonForUpdate",
                         Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
+                            if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/Android/i))
                                 return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldReasonForUpdate}>{value}</span> : "")
-                            else
-                                return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
-                        },
-                        width: 200
-                    }, {
-                        Header: () => <div title={this.props.localeStrings.cloudStorageFieldLabel}>{this.props.localeStrings.cloudStorageFieldLabel}</div>,
-                        accessor: "cloudStorageLink",
-                        Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
-                                return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.cloudStorageFieldLabel}>{value}</span> : "")
-                            else
-                                return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
-                        },
-                        width: 200
-                    },
-                    {
-                        Header: () => <div title={this.props.localeStrings.fieldBridgeID}>{this.props.localeStrings.fieldBridgeID}</div>,
-                        accessor: "bridgeID",
-                        Cell: ({ value }: any) => {
-                            if (navigator.userAgent.match(/iPhone|Android/i))
-                                return (value ? <span tabIndex={0} role="textbox" aria-readonly aria-label={this.props.localeStrings.fieldBridgeID}>{value}</span> : "")
                             else
                                 return (value ? <span tabIndex={0} title={value}>{value}</span> : "")
                         },
@@ -544,9 +440,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                 ]
             }
         ] : [];
-
         const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
-        const pdfFileName = this.props.localeStrings.incidentHistory + " - " + this.props.incidentId + " - " + this.state.incidentVersionData[this.state.incidentVersionData.length - 1]?.incidentName;
 
         return (
             <>
@@ -554,10 +448,10 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     <div className=".col-xs-12 .col-sm-8 .col-md-4 container" id="incident-history-path">
                         <label>
                             <span
-                                onClick={() => this.props.onBackClick("")}
+                                onClick={() => this.props.onBackClick(false)}
                                 onKeyDown={(event) => {
                                     if (event.key === constants.enterKey)
-                                        this.props.onBackClick("")
+                                        this.props.onBackClick(false)
                                 }}
                                 className="go-back">
                                 <ChevronStartIcon id="path-back-icon" />
@@ -570,7 +464,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                     <div className={`incident-history-area${isDarkOrContrastTheme ? " incident-history-area-darkcontrast" : ""}`}>
                         <div className="container">
                             <div className="heading-and-view-selection-area">
-                                <h1 aria-live="polite" role="alert"> <div className="incident-history-label">{this.props.localeStrings.incidentHistory} - {this.props.incidentId}</div></h1>
+                                <h1 aria-live="polite" role="alert"><div className="incident-history-label">{this.props.localeStrings.incidentHistory} - {this.props.incidentId}</div></h1>
                                 <div className="view-selection-area">
                                     <label htmlFor="list-view-select" className="flip-view" title={this.props.localeStrings.listView}>
                                         <input
@@ -583,9 +477,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         <img
                                             src={require("../assets/Images/ListViewIcon.svg").default}
                                             alt={this.props.localeStrings.listView}
-                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`}
-                                        />
-
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} />
                                         <span>{this.props.localeStrings.listView}</span>
                                     </label>
                                     <label htmlFor="table-view-select" className="flip-view" title={this.props.localeStrings.tableView}>
@@ -602,25 +494,14 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         <img
                                             src={require("../assets/Images/TableViewIcon.svg").default}
                                             alt={this.props.localeStrings.tableView}
-                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`}
-                                        />
-
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} />
                                         <span>{this.props.localeStrings.tableView}</span>
                                     </label>
-                                    {/* <div id="incident-history-download-link">
-                                        <PDFDownloadLink
-                                            document={this.formatIncidentHistoryPDF(pdfFileName, this.state.versionHistoryPDFData)}
-                                            fileName={`${pdfFileName}.pdf`}
-                                            className="download-pdf"
-                                        >
-                                            {({ blob, url, loading, error }: any) => this.downloadIncidentHistoryPDF(loading, error)}
-                                        </PDFDownloadLink>
-                                    </div> */}
                                 </div>
                             </div>
                             {this.state.isListView ?
-                                <div className='activity-version-details-area'>
-                                    <div className='activity-log-area'>
+                                <div className="activity-version-details-area">
+                                <div className='activity-log-area'>
                                         <div className="activity-log-heading" title={this.props.localeStrings.activityLog}>{this.props.localeStrings.activityLog}</div>
                                         <div className='activity-log-list-main-area' data-is-scrollable>
                                             {this.state.incidentVersionData !== undefined &&
@@ -644,15 +525,13 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                             }
                                         </div>
                                     </div>
-                                    <div className='version-details-area' ref={this.detailsListRef}>
+                                    <div className='version-details-area'>
                                         {this.state.versionDetails.length > 0 ?
                                             <DetailsList
                                                 items={this.state.versionDetails}
                                                 columns={listViewColumns}
                                                 layoutMode={DetailsListLayoutMode.justified}
                                                 checkboxVisibility={CheckboxVisibility.hidden}
-                                                onDidUpdate={() => this.detailsListRef.current?.getElementsByClassName("ms-DetailsList-headerWrapper")[0]
-                                                    ?.getElementsByClassName("ms-DetailsHeader")[0]?.setAttribute("aria-busy", "true")}
                                             />
                                             :
                                             <>
@@ -679,7 +558,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                         showPagination={false}
                                         sortable={false}
                                     />
-                                    {(this.state.showRoles || this.state.showRoleLeads) ?
+                                    {this.state.showRoles ?
                                         <Dialog
                                             cancelButton={{
                                                 icon: <CloseIcon bordered circular size="smallest" className="roles-popup-btn-close-icon" />,
@@ -692,12 +571,10 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                                 <div className="role-assignment-table">
                                                     <Row id="role-grid-thead" xs={2} sm={2} md={2}>
                                                         <Col md={6} sm={6} xs={6} >{this.props.localeStrings.headerRole}</Col>
-                                                        <Col md={6} sm={6} xs={6} className="thead-border-left">
-                                                            {this.state.showRoles ? this.props.localeStrings.headerUsers : this.props.localeStrings.leadLabel}
-                                                        </Col>
+                                                        <Col md={6} sm={6} xs={6} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
                                                     </Row>
                                                     <div className="role-grid-tbody-area">
-                                                        {(this.state.showRoles ? this.state.roleDetails : this.state.roleLeadDetails).map((item: any, index: any) => (
+                                                        {this.state.roleDetails.map((item: any, index: any) => (
                                                             <Row xs={2} sm={2} md={2} key={index} id="role-grid-tbody">
                                                                 <Col md={6} sm={6} xs={6}>{item.Role}</Col>
                                                                 <Col md={6} sm={6} xs={6}>{item.Users}</Col>
@@ -707,14 +584,14 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                                     </div>
                                                 </div>
                                             }
-                                            header={this.state.showRoles ? this.props.localeStrings.roles : this.props.localeStrings.roleLeadsLabel}
+                                            header={this.props.localeStrings.roles}
                                             headerAction={{
                                                 icon: <CloseIcon onClick={() => this.hideRoles()} />,
                                                 title: this.props.localeStrings.btnClose,
                                             }}
                                             onCancel={(e) => this.hideRoles()}
-                                            open={this.state.showRoles || this.state.showRoleLeads}
-                                            className={`view-roles-popup${this.props.currentThemeName === constants.darkMode ? " view-roles-popup-dark" : this.props.currentThemeName === constants.contrastMode ? " view-roles-popup-contrast" : ""}}`}
+                                            open={this.state.showRoles}
+                                            className={`view-roles-popup${this.props.currentThemeName === constants.darkMode ? " view-roles-popup-dark" : `${this.props.currentThemeName === constants.contrastMode ? " view-roles-popup-contrast":""}`}`}
                                         />
                                         : null}
                                 </div>
@@ -725,71 +602,4 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             </>
         );
     }
-
-    //Format Incident History PDF Document
-    // private formatIncidentHistoryPDF(incident: string, versionHistoryPDFData: any): JSX.Element {
-    //     return (
-    //         <Document>
-    //             <Page style={PDFStyles.body} size={'A4'}>
-    //                 <Text style={PDFStyles.mainHeading}>{incident}</Text>
-    //                 {versionHistoryPDFData.map((item: any) => {
-    //                     return (
-    //                         item?.versionData.length > 0 ?
-    //                             <View>
-    //                                 <View style={PDFStyles.tableHeading}>
-    //                                     <View><Text>{this.props.localeStrings.modifiedOn}: {item.modifiedOn}</Text></View>
-    //                                     <View><Text>{this.props.localeStrings.modifiedBy}: {item.modifiedBy}</Text></View>
-    //                                 </View>
-    //                                 <View style={PDFStyles.table} key={item.modifiedOn + "-" + item.modifiedBy}>
-    //                                     <View style={{ ...PDFStyles.tableRow, ...PDFStyles.tableHeaderRow }}>
-    //                                         <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell1, ...PDFStyles.tableHeaderCell }}>
-    //                                             <Text style={PDFStyles.tableCellText}>{this.props.localeStrings.field}</Text>
-    //                                         </View>
-    //                                         <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell2, ...PDFStyles.tableHeaderCell }}>
-    //                                             <Text style={PDFStyles.tableCellText}>{this.props.localeStrings.new}</Text>
-    //                                         </View>
-    //                                         <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell3, ...PDFStyles.tableHeaderCell }}>
-    //                                             <Text style={PDFStyles.tableCellText}>{this.props.localeStrings.old}</Text>
-    //                                         </View>
-    //                                     </View>
-    //                                     {item.versionData.map((versionDataItem: any) => {
-    //                                         return (
-    //                                             <View style={PDFStyles.tableRow} key={item.version + "-" + versionDataItem.field} wrap={false} >
-    //                                                 <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell1 }}>
-    //                                                     <Text style={PDFStyles.tableCellText}>{versionDataItem.field}</Text>
-    //                                                 </View>
-    //                                                 <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell2 }}>
-    //                                                     <Text style={PDFStyles.tableCellText}>{versionDataItem.newValue}</Text>
-    //                                                 </View>
-    //                                                 <View style={{ ...PDFStyles.tableCell, ...PDFStyles.tableCell3 }}>
-    //                                                     <Text style={PDFStyles.tableCellText}>{versionDataItem.oldValue}</Text>
-    //                                                 </View>
-    //                                             </View>
-    //                                         );
-    //                                     })}
-    //                                 </View>
-    //                             </View> : <></>
-    //                     );
-    //                 })}
-
-    //                 <Text style={PDFStyles.pageNumbers} render={({ pageNumber, totalPages }) => (
-    //                     `${pageNumber} / ${totalPages}`
-    //                 )} fixed />
-    //             </Page>
-    //         </Document>
-    //     );
-    // }
-
-    //Render download button content based on loading or error state.
-    // private downloadIncidentHistoryPDF(loading: any, error: any): JSX.Element {
-    //     if (error) {
-    //         console.error("pdf generation failed", error);
-    //     }
-    //     return (
-    //         <>
-    //             <img src={require("../assets/Images/Pdf.svg").default} alt="pdf-icon" className={`pdf-icon ${this.props.currentThemeName}-icon`} />
-    //             <span className="download-text">{loading ? this.props.localeStrings.loadingLabel : this.props.localeStrings.downloadBtnLabel + " PDF"}</span>
-    //         </>
-    //     );
-    // }
 }
