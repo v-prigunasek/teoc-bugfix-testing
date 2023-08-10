@@ -30,6 +30,7 @@ import { Toggle } from '@fluentui/react/lib/Toggle';
 import { AddIcon } from '@fluentui/react-icons-northstar';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DatePicker, IComboBox, TimePicker, ComboBox } from "@fluentui/react";
+import { PeopleEdit24Regular, Delete24Regular, Dismiss24Regular, Save24Regular } from "@fluentui/react-icons";
 
 const calloutProps = { gapSpace: 0 };
 
@@ -49,6 +50,7 @@ export interface IIncidentDetailsProps {
     appInsights: ApplicationInsights;
     userPrincipalName: any;
     tenantID: any;
+    currentThemeName: string;
 }
 
 export interface IIncidentDetailsState {
@@ -3875,6 +3877,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
 
     //main render method
     public render() {
+        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
         return (
             <>
                 <div className="incident-details">
@@ -3907,7 +3910,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                     <span>&nbsp;&nbsp;{this.props.localeStrings.formTitle}</span>
                                 </label>
                             </div>
-                            <div className="incident-details-form-area">
+                            <div className={`incident-details-form-area${isDarkOrContrastTheme ? " form-area-darkcontrast" : ""}`}>
                                 <div className="container">
                                     <h2 aria-live="polite" role="alert"> <div className="incident-form-head-text">
                                         {!this.props.isEditMode ?
@@ -3999,7 +4002,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                 ariaLabel={constants.startDateAriaLabel + constants.requiredAriaLabel}
                                                                 className="incident-datepicker"
                                                                 formatDate={this.onFormatDate}
-                                                                calloutProps={{ className: "incidentdatepicker-callout" }}
+                                                                calloutProps={{ className: `incidentdatepicker-callout${this.props.currentThemeName === constants.darkMode ? " incidentdatepicker-callout-dark" : `${this.props.currentThemeName === constants.contrastMode ? " incidentdatepicker-callout-contrast" : ""}`}` }}
                                                             />
                                                             <TimePicker
                                                                 dateAnchor={this.state.incDetailsItem.startDate}
@@ -4188,7 +4191,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     autoSize
                                                     onChange={this.onRoleChange}
                                                     value={this.state.incDetailsItem ? (this.state.incDetailsItem.selectedRole ? this.state.incDetailsItem.selectedRole : '') : ''}
-                                                    className={this.state.incDetailsItem && this.state.incDetailsItem.selectedRole ? "incident-details-dropdown" : "dropdown-placeholder"}
+                                                    className={this.state.incDetailsItem && this.state.incDetailsItem.selectedRole ? "select-role-dropdown" : "select-role-placeholder"}
                                                     id="addRole-dropdown"
                                                     aria-labelledby="addRole-dropdown"
                                                 />
@@ -4219,7 +4222,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                         >
                                                             <img src={require("../assets/Images/AddIcon.svg").default}
                                                                 alt="add"
-                                                                className="manage-role-btn-icon"
+                                                                className={`manage-role-btn-icon${this.props.currentThemeName === constants.contrastMode ? " add-icon-contrast" : ""}`}
                                                             />
                                                             &nbsp;&nbsp;&nbsp;
                                                             <label className="manage-role-btn-label">{this.props.localeStrings.btnCreateRole}</label>
@@ -4287,7 +4290,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             title={this.props.localeStrings.btnAddUser}>
                                                             <img src={require("../assets/Images/AddIcon.svg").default}
                                                                 alt=""
-                                                                className="manage-role-btn-icon"
+                                                                className={`manage-role-btn-icon${this.props.currentThemeName === constants.contrastMode ? " add-icon-contrast" : ""}`}
                                                             />
                                                             &nbsp;&nbsp;&nbsp;
                                                             <label className="manage-role-btn-label">{this.props.localeStrings.btnAddUser}</label>
@@ -4299,7 +4302,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                         </Col>
                                         <Col md={8} sm={12} xs={12}>
                                             <Container as="table" className="role-assignment-table">
-                                                <Row as="tr" className="role-grid-thead" xs={3} sm={3} md={3}>
+                                                <Row as="tr" xs={3} sm={3} md={3} className={`role-grid-thead${isDarkOrContrastTheme ? " table-header-darkcontrast" : ""}`}>
                                                     <Col as="th" md={3} sm={3} xs={3} key={0}>{this.props.localeStrings.headerRole}</Col>
                                                     <Col as="th" md={3} sm={3} xs={3} key={1} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
                                                     <Col as="th" md={3} sm={3} xs={3} key={2} className="thead-border-left">{this.props.localeStrings.leadLabel}</Col>
@@ -4374,12 +4377,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                         )}
                                                                     </Col>
                                                                     <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
-                                                                        <Icon
-                                                                            aria-label="Save"
-                                                                            iconName="Save"
-                                                                            className="role-edit-icon"
-                                                                            onClick={(e) => this.updateRoleAssignment(index)}
-                                                                            onKeyDown={(event) => {
+                                                                        <Save24Regular aria-label="Save"
+                                                                            className="role-icon"
+                                                                            onClick={(e:any) => this.updateRoleAssignment(index)}
+                                                                            onKeyDown={(event:any) => {
                                                                                 if (event.key === constants.enterKey)
                                                                                     this.updateRoleAssignment(index)
                                                                             }}
@@ -4389,10 +4390,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                         />
                                                                     </Col>
                                                                     <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
-                                                                        <Icon aria-label="Cancel" iconName="Cancel"
-                                                                            className="role-edit-icon"
-                                                                            onClick={(e) => this.exitEditModeForRoles(index)}
-                                                                            onKeyDown={(event) => {
+                                                                        <Dismiss24Regular aria-label="Cancel"
+                                                                            className="role-icon"
+                                                                            onClick={(e:any) => this.exitEditModeForRoles(index)}
+                                                                            onKeyDown={(event:any) => {
                                                                                 if (event.key === constants.enterKey)
                                                                                     this.exitEditModeForRoles(index)
                                                                             }}
@@ -4417,12 +4418,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     />
                                                                 </Col>
                                                                 <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
-                                                                    <img
-                                                                        src={require("../assets/Images/GridEditIcon.svg").default}
-                                                                        alt="Edit"
+                                                                    <PeopleEdit24Regular
                                                                         className="role-icon"
-                                                                        onClick={(e) => this.editRoleItem(index)}
-                                                                        onKeyDown={(event) => {
+                                                                        onClick={(e:any) => this.editRoleItem(index)}
+                                                                        onKeyDown={(event:any) => {
                                                                             if (event.key === constants.enterKey)
                                                                                 this.editRoleItem(index)
                                                                         }}
@@ -4432,12 +4431,10 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     />
                                                                 </Col>
                                                                 <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
-                                                                    <img
-                                                                        src={require("../assets/Images/DeleteIcon.svg").default}
-                                                                        alt="Delete"
+                                                                    <Delete24Regular
                                                                         className="role-icon"
-                                                                        onClick={(e) => this.deleteRoleItem(index)}
-                                                                        onKeyDown={(event) => {
+                                                                        onClick={(e:any) => this.deleteRoleItem(index)}
+                                                                        onKeyDown={(event:any) => {
                                                                             if (event.key === constants.enterKey)
                                                                                 this.deleteRoleItem(index)
                                                                         }}
@@ -4694,7 +4691,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 <Flex hAlign="end" gap="gap.large" wrap={true}>
                                                     <Button
                                                         onClick={() => this.props.onBackClick("")}
-                                                        id="new-incident-back-btn"
+                                                        className="new-incident-back-btn"
                                                         fluid={true}
                                                         title={this.props.localeStrings.btnBack}
                                                     >
@@ -4706,7 +4703,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             primary
                                                             onClick={this.updateIncidentDetails}
                                                             fluid={true}
-                                                            id="new-incident-create-btn"
+                                                            className={`new-incident-create-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
+
                                                             title={this.props.localeStrings.btnUpdateIncident}
                                                         >
                                                             <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="" /> &nbsp;
@@ -4717,7 +4715,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                             primary
                                                             onClick={this.createNewIncident}
                                                             fluid={true}
-                                                            id="new-incident-create-btn"
+                                                            className={`new-incident-create-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
+
                                                             title={this.props.localeStrings.btnCreateIncident}
                                                         >
                                                             <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="" /> &nbsp;

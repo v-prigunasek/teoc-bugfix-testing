@@ -1,4 +1,4 @@
-import { Callout, DirectionalHint, Icon, IPivotItemProps, Pivot, PivotItem } from '@fluentui/react';
+import { Icon, IPivotItemProps, Pivot, PivotItem } from '@fluentui/react';
 import { Button, Flex, FormInput, Loader, SearchIcon } from "@fluentui/react-northstar";
 import { ApplicationInsights } from '@microsoft/applicationinsights-web';
 import { Client } from "@microsoft/microsoft-graph-client";
@@ -13,6 +13,11 @@ import * as constants from '../common/Constants';
 import * as graphConfig from '../common/graphConfig';
 import siteConfig from '../config/siteConfig.json';
 import '../scss/Dashboard.module.scss';
+import { Person } from '@microsoft/mgt-react';
+import {
+    Popover, PopoverSurface,
+    PopoverTrigger,
+} from "@fluentui/react-components";
 
 export interface IDashboardProps {
     graph: Client;
@@ -33,6 +38,7 @@ export interface IDashboardProps {
     isRolesEnabled: boolean;
     isUserAdmin: boolean;
     settingsLoader: boolean;
+    currentThemeName: string;
 }
 
 export interface IDashboardState {
@@ -213,7 +219,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                 key={option.text}
                                 type="button"
                                 onClick={() => onSizePerPageChange(option.page)}
-                                className={`btn ${isSelect ? 'sizeperpage-selected' : 'sizeperpage'}`}
+                                className={`btn${isSelect ? ' sizeperpage-selected' : ' sizeperpage'}${this.props.currentThemeName === constants.defaultMode ? "" : " selected-darkcontrast"}`}
                                 aria-label={constants.sizePerPageLabel + option.text}
                             >
                                 {option.text}
@@ -256,7 +262,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     break;
             }
             return (
-                <li key={options.title} className={`${className}page-item`} role="presentation" title={ariaLabel}>
+                <li key={options.title} className={`${className}page-item${this.props.currentThemeName === constants.defaultMode ? "" : " selected-darkcontrast"}`} role="presentation" title={ariaLabel}>
                     <a className="page-link" href="#" onClick={handleClick} role="button" aria-label={ariaLabel}>
                         <span aria-hidden="true">{pageText}</span>
                     </a>
@@ -324,7 +330,17 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
     incidentNameFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
         const ariaLabel = `${this.props.localeStrings.incidentName} ${cell}`
         return (
-            <span aria-label={ariaLabel}>{cell}</span>
+            <span
+                aria-label={ariaLabel}
+                tabIndex={0}
+                role="link"
+                className="incIdDeepLink"
+                onClick={() => this.onDeepLinkClick(gridRow)}
+                onKeyDown={(event) => {
+                    if (event.key === constants.enterKey)
+                        this.onDeepLinkClick(gridRow)
+                }}
+            >{cell}</span>
         );
     }
 
@@ -338,9 +354,14 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
 
     // format the cell for Incident Commander column to fix accessibility issues
     incidentCommanderFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
-        const ariaLabel = `${this.props.localeStrings.incidentCommander} ${cell}`
+        const incidentCommander = cell ? cell.split("|") : [];
         return (
-            <span aria-label={ariaLabel}>{cell}</span>
+            <Person
+                userId={incidentCommander[1]?.trim()}
+                view={3}
+                personCardInteraction={1}
+                className='incident-commander-person-card'
+            />
         );
     }
 
@@ -435,67 +456,68 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
 
     //Incident Settings Area
     public renderIncidentSettings = () => {
-        // added constants for manage dropdown menu
-        const manageButtonId = 'manage-callout-button';
-        const manageLabelId = 'manage-callout-label';
-        const manageDescriptionId = 'manage-callout-description';
         return (
             <Flex space="between" wrap={true}>
-                <div
-                    className={`manage-links${this.state.isManageCalloutVisible ? " callout-visible" : ""}`}
-                    onClick={() => this.setState({ isManageCalloutVisible: !this.state.isManageCalloutVisible })}
-                    id={manageButtonId}
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                        if (event.key === constants.enterKey)
-                            this.setState({ isManageCalloutVisible: !this.state.isManageCalloutVisible })
-                    }}
-                    role="button"
-                    title="Manage"
+                <Popover
+                    open={this.state.isManageCalloutVisible}
+                    inline={true}
+                    onOpenChange={() => this.setState({ isManageCalloutVisible: !this.state.isManageCalloutVisible })}
+                    positioning="below"
+                    size='medium'
+                    closeOnScroll={true}
                 >
-                    <img
-                        src={require("../assets/Images/ManageIcon.svg").default}
-                        className="manage-icon"
-                        alt=""
-                    />
-                    <img
-                        src={require("../assets/Images/ManageIconActive.svg").default}
-                        className='manage-icon-active'
-                        alt=""
-                    />
-                    <div className='manage-label'>{this.props.localeStrings.manageLabel}</div>
-                    {this.state.isManageCalloutVisible ?
-                        <Icon iconName="ChevronUp" />
-                        :
-                        <Icon iconName="ChevronDown" />
-                    }
-                </div>
 
-                {this.state.isManageCalloutVisible ? (
-                    <Callout
-                        ariaLabelledBy={manageLabelId}
-                        ariaDescribedBy={manageDescriptionId}
-                        role="menu"
-                        className="manage-links-callout"
-                        gapSpace={10}
-                        target={`#${manageButtonId}`}
-                        isBeakVisible={false}
-                        onDismiss={() => this.setState({ isManageCalloutVisible: false })}
-                        directionalHint={DirectionalHint.bottomLeftEdge}
-                        onPositioned={() => document?.getElementsByClassName('manage-links-callout')[0]
-                            ?.getElementsByTagName("div")[0]?.setAttribute("aria-busy", "true")}
-                        setInitialFocus
-                    >
+                    <PopoverTrigger disableButtonEnhancement={true}>
+
+                        <div
+                            className={`manage-links${this.state.isManageCalloutVisible ? " callout-visible" : ""}`}
+                            onClick={() => this.setState({ isManageCalloutVisible: !this.state.isManageCalloutVisible })}
+
+                            tabIndex={0}
+                            onKeyDown={(event) => {
+                                if (event.key === constants.enterKey)
+                                    this.setState({ isManageCalloutVisible: !this.state.isManageCalloutVisible })
+                            }}
+                            role="button"
+                            title="Manage"
+                        >
+                            <img
+                                src={require("../assets/Images/ManageIcon.svg").default}
+                                className={`manage-icon${this.props.currentThemeName === constants.defaultMode ? "" : " manage-icon-darkcontrast"}`}
+
+                                alt=""
+                            />
+                            <img
+                                src={require("../assets/Images/ManageIconActive.svg").default}
+                                className='manage-icon-active'
+                                alt=""
+                            />
+                            <div className='manage-label'>{this.props.localeStrings.manageLabel}</div>
+                            {this.state.isManageCalloutVisible ?
+                                <Icon iconName="ChevronUp" />
+                                :
+                                <Icon iconName="ChevronDown" />
+                            }
+                        </div>
+
+                    </PopoverTrigger>
+                    <PopoverSurface as="div" className="manage-links-callout" >
+
                         <div>
-                            <div title={this.props.localeStrings.manageIncidentTypesTooltip} className="dashboard-link">
+                            <div title={this.props.localeStrings.manageIncidentTypesTooltip} className="dashboard-link" onKeyDown={(event) => {
+                                if (event.shiftKey)
+                                    this.setState({ isManageCalloutVisible: false })
+                            }}>
                                 <a title={this.props.localeStrings.manageIncidentTypesTooltip} href={`https://${this.props.tenantName}/sites/${this.props.siteName}/lists/${siteConfig.incTypeList}`} target='_blank' rel="noreferrer">
-                                    <img src={require("../assets/Images/Manage Incident Types.svg").default} alt="" />
+                                    <img src={require("../assets/Images/Manage Incident Types.svg").default} alt="" className={`manage-item-icon${this.props.currentThemeName === constants.defaultMode ? "" : " manage-item-icon-darkcontrast"}`}
+                                    />
                                     <span role="button" className="manage-callout-text">{this.props.localeStrings.incidentTypesLabel}</span>
                                 </a>
                             </div>
                             <div title={this.props.localeStrings.manageRolesTooltip} className="dashboard-link">
                                 <a title={this.props.localeStrings.manageRolesTooltip} href={`https://${this.props.tenantName}/sites/${this.props.siteName}/lists/${siteConfig.roleAssignmentList}`} target='_blank' rel="noreferrer">
-                                    <img src={require("../assets/Images/Manage Roles.svg").default} alt="" />
+                                    <img src={require("../assets/Images/Manage Roles.svg").default} alt="" className={`manage-item-icon${this.props.currentThemeName === constants.defaultMode ? "" : " manage-item-icon-darkcontrast"}`}
+                                    />
                                     <span role="button" className="manage-callout-text">{this.props.localeStrings.roles}</span>
                                 </a>
                             </div>
@@ -515,6 +537,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                     <img
                                         src={require("../assets/Images/AdminSettings.svg").default}
                                         alt=""
+                                        className={`manage-item-icon${this.props.currentThemeName === constants.defaultMode ? "" : " manage-item-icon-darkcontrast"}`}
                                     />
                                     <span className="manage-callout-text">
                                         {this.props.localeStrings.adminSettingsLabel}
@@ -522,15 +545,17 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                 </span>
                             </div>
                         </div>
-                    </Callout>
-                ) : null}
+                    </PopoverSurface>
+                </Popover>
                 <Button
-                    primary id="create-incident-btn"
+                    primary className={`create-incident-btn${this.props.currentThemeName === constants.contrastMode ? " create-icon-contrast" : ""}`}
+
                     fluid={true}
                     onClick={() => this.props.onCreateTeamClick()}
                     title={this.props.localeStrings.btnCreateIncident}
                 >
-                    <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt="edit icon" />
+                    <img src={require("../assets/Images/ButtonEditIcon.svg").default} />
+
                     {this.props.localeStrings.btnCreateIncident}
                 </Button>
             </Flex>
@@ -631,7 +656,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                 attrs: { 'role': 'presentation' }
 
             }, {
-                dataField: 'incidentCommander',
+                dataField: 'incidentCommanderObj',
                 text: this.props.localeStrings.incidentCommander,
                 formatter: this.incidentCommanderFormatter,
                 headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
@@ -666,10 +691,11 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                 text: this.props.localeStrings.action,
                 formatter: this.actionFormatter,
                 headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
-                attrs: { 'role': 'presentation' }
-
+                attrs: { 'role': 'presentation' },
+                classes: `edit-icon-${this.props.currentThemeName}`
             }
         ]
+        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
 
         return (
             <>
@@ -679,7 +705,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     </>
                     :
                     <div>
-                        <div id="dashboard-search-btn-area">
+                        <div className={`dashboard-search-btn-area${isDarkOrContrastTheme ? " eoc-searcharea-darkcontrast" : ""}`}>
                             <div className="container">
                                 <Flex space="between" wrap={true}>
                                     <div className="search-area">
@@ -705,9 +731,10 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                 </Flex>
                             </div>
                         </div>
-                        <div id="dashboard-pivot-container">
+                        <div className={`dashboard-pivot-container${isDarkOrContrastTheme ? " eoc-background-darkcontrast" : ""}`}>
+
                             <div className="container">
-                                <h1><div className="grid-heading">{this.props.localeStrings.incidentDetails}</div></h1>
+                                <h1 style={{ "margin": "0" }}><div className="grid-heading">{this.props.localeStrings.incidentDetails}</div></h1>
                                 <Flex gap={this.state.isDesktop ? "gap.medium" : "gap.small"} space="evenly" id="status-indicators" wrap={true}>
                                     <Flex gap={this.state.isDesktop ? "gap.small" : "gap.smaller"}>
                                         <img src={require("../assets/Images/AllItems.svg").default} alt="All Items" />
@@ -730,7 +757,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                     aria-label="Incidents Details"
                                     linkFormat="tabs"
                                     overflowBehavior='none'
-                                    id="piv-tabs"
+                                    className={`pivot-tabs${isDarkOrContrastTheme ? " pivot-button-darkcontrast" : ""}`}
                                     onLinkClick={(item, ev) => (this.setState({ currentTab: item?.props.headerText }))}
                                     ref={this.dashboardRef}
                                 >
@@ -741,12 +768,15 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                         onRenderItemLink={this._customRenderer}
                                     >
                                         <BootstrapTable
-                                            striped
+
                                             bootstrap4
                                             bordered={false}
                                             keyField="incidentId"
                                             columns={dashboardHeader}
                                             data={this.state.filteredAllIncidents}
+                                            wrapperClasses={isDarkOrContrastTheme ? "table-darkcontrast" : ""}
+                                            headerClasses={isDarkOrContrastTheme ? "table-header-darkcontrast" : ""}
+
                                             pagination={this.pagination}
                                             noDataIndication={() => (<div id="noincident-all-tab" aria-live="polite" role="status">{this.props.localeStrings.noIncidentsFound}</div>)}
                                         />
@@ -758,12 +788,13 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                         onRenderItemLink={this._customRenderer}
                                     >
                                         <BootstrapTable
-                                            striped
                                             bootstrap4
                                             bordered={false}
                                             keyField="incidentId"
                                             columns={dashboardHeader}
                                             data={this.state.filteredPlanningIncidents}
+                                            wrapperClasses={isDarkOrContrastTheme ? "table-darkcontrast" : ""}
+                                            headerClasses={isDarkOrContrastTheme ? "table-header-darkcontrast" : ""}
                                             pagination={this.pagination}
                                             noDataIndication={() => (<div id="noincident-planning-tab" aria-live="polite" role="status">{this.props.localeStrings.noIncidentsFound}</div>)}
                                         />
@@ -775,12 +806,13 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                         onRenderItemLink={this._customRenderer}
                                     >
                                         <BootstrapTable
-                                            striped
                                             bootstrap4
                                             bordered={false}
                                             keyField="incidentId"
                                             columns={dashboardHeader}
                                             data={this.state.filteredActiveIncidents}
+                                            wrapperClasses={isDarkOrContrastTheme ? "table-darkcontrast" : ""}
+                                            headerClasses={isDarkOrContrastTheme ? "table-header-darkcontrast" : ""}
                                             pagination={this.pagination}
                                             noDataIndication={() => (<div id="noincident-active-tab" aria-live="polite" role="status">{this.props.localeStrings.noIncidentsFound}</div>)}
                                         />
@@ -792,12 +824,14 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                         onRenderItemLink={this._customRenderer}
                                     >
                                         <BootstrapTable
-                                            striped
                                             bootstrap4
                                             bordered={false}
                                             keyField="incidentId"
                                             columns={dashboardHeader}
                                             data={this.state.filteredCompletedIncidents}
+                                            wrapperClasses={isDarkOrContrastTheme ? "table-darkcontrast" : ""}
+                                            headerClasses={isDarkOrContrastTheme ? "table-header-darkcontrast" : ""}
+
                                             pagination={this.pagination}
                                             noDataIndication={() => (<div id="noincident-completed-tab" aria-live="polite" role="status">{this.props.localeStrings.noIncidentsFound}</div>)}
                                         />

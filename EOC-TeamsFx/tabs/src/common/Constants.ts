@@ -100,6 +100,11 @@ export const plannerBucketTitle = "To do";
 //Admin Settigs
 export const adminRole = "Admin";
 
+//Teams theme mode
+export const defaultMode = "default";
+export const darkMode = "dark";
+export const contrastMode = "contrast";
+
 //accessibility
 export const enterKey = "Enter";
 export const tabKey = "Tab";

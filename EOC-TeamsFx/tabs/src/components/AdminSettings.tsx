@@ -26,6 +26,7 @@ export interface IAdminSettingsProps {
     setState: any;
     tenantName: string;
     siteName: any;
+    currentThemeName: string;
 }
 
 export interface IAdminSettingsState {
@@ -47,6 +48,7 @@ export default class AdminSettings extends React.Component<IAdminSettingsProps, 
 
     //render method
     render() {
+        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
         return (
             <div className='admin-settings'>
                 <div className=".col-xs-12 .col-sm-8 .col-md-4 container admin-settings-path">
@@ -64,9 +66,9 @@ export default class AdminSettings extends React.Component<IAdminSettingsProps, 
                         <span>&nbsp;&nbsp;{this.props.localeStrings.adminSettingsLabel}</span>
                     </label>
                 </div>
-                <div className='admin-settings-wrapper'>
+                <div className={`admin-settings-wrapper${isDarkOrContrastTheme ? " admin-settings-wrapper-darkcontrast" : ""}`}>                            
                     <div className="container">
-                        <h1 aria-live="polite" role="alert"><div className="admin-settings-heading">{this.props.localeStrings.adminSettingsLabel}</div></h1>
+                        <h1 style={{ "margin": "0" }} aria-live="polite" role="alert"><div className="admin-settings-heading">{this.props.localeStrings.adminSettingsLabel}</div></h1>
                         <Row xl={1} lg={1} md={1} sm={1} xs={1}>
                             <Col md={12}>
                                 <div className="toggle-setting-type">
@@ -97,6 +99,7 @@ export default class AdminSettings extends React.Component<IAdminSettingsProps, 
                                 userPrincipalName={this.props.userPrincipalName}
                                 showMessageBar={this.props.showMessageBar}
                                 hideMessageBar={this.props.hideMessageBar}
+                                currentThemeName={this.props.currentThemeName}
                             />
                         }
                         {this.state.roleSettings &&

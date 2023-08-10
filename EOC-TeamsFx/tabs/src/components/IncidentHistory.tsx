@@ -47,6 +47,7 @@ export interface IIncidentHistoryProps {
     showMessageBar(message: string, type: string): void;
     hideMessageBar(): void;
     incidentId: string;
+    currentThemeName: string;
 }
 
 export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, IIncidentHistoryState>  {
@@ -520,7 +521,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
             }
         ] : [];
 
-
+        const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
         return (
             <>
                 <div className="incident-history">
@@ -540,7 +541,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                             <span title={this.props.localeStrings.incidentHistory}>&nbsp;&nbsp;{this.props.localeStrings.incidentHistory}</span>
                         </label>
                     </div>
-                    <div className="incident-history-area">
+                    <div className={`incident-history-area${isDarkOrContrastTheme ? " incident-history-area-darkcontrast" : ""}`}>
                         <div className="container">
                             <div className="heading-and-view-selection-area">
                                 <h1 aria-live="polite" role="alert"> <div className="incident-history-label">{this.props.localeStrings.incidentHistory} - {this.props.incidentId}</div></h1>
@@ -553,7 +554,12 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                             onChange={() => this.setState({ isListView: !this.state.isListView })}
                                             checked={this.state.isListView}
                                         />
-                                        <img src={require("../assets/Images/ListViewIcon.svg").default} alt={this.props.localeStrings.listView} />
+                                        <img
+                                            src={require("../assets/Images/ListViewIcon.svg").default}
+                                            alt={this.props.localeStrings.listView}
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`}
+                                        />
+
                                         <span>{this.props.localeStrings.listView}</span>
                                     </label>
                                     <label htmlFor="table-view-select" className="flip-view" title={this.props.localeStrings.tableView}>
@@ -567,7 +573,12 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                             }}
                                             checked={!this.state.isListView}
                                         />
-                                        <img src={require("../assets/Images/TableViewIcon.svg").default} alt={this.props.localeStrings.tableView} />
+                                        <img
+                                            src={require("../assets/Images/TableViewIcon.svg").default}
+                                            alt={this.props.localeStrings.tableView}
+                                            className={`view-icons${isDarkOrContrastTheme ? " view-icons-darkcontrast" : ""}`} 
+                                        />
+                                      
                                         <span>{this.props.localeStrings.tableView}</span>
                                     </label>
                                 </div>
@@ -639,7 +650,8 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                                 icon: <CloseIcon bordered circular size="smallest" className="roles-popup-btn-close-icon" />,
                                                 title: this.props.localeStrings.btnClose,
                                                 iconPosition: 'before',
-                                                content: this.props.localeStrings.btnClose
+                                                content: this.props.localeStrings.btnClose,
+                                                className: "roles-popup-btn-close"
                                             }}
                                             content={
                                                 <div className="role-assignment-table">
@@ -667,7 +679,7 @@ export class IncidentHistory extends React.PureComponent<IIncidentHistoryProps, 
                                             }}
                                             onCancel={(e) => this.hideRoles()}
                                             open={this.state.showRoles || this.state.showRoleLeads}
-                                            className="view-roles-popup"
+                                            className={`view-roles-popup${this.props.currentThemeName === constants.darkMode ? " view-roles-popup-dark" : `${this.props.currentThemeName === constants.contrastMode ? " view-roles-popup-contrast":""}`}`}
                                         />
                                         : null}
                                 </div>

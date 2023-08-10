@@ -30,7 +30,7 @@
     }
 
     .focus-indicator {
-        outline: 2px solid #585CC9;
+        outline: 2px solid #6869C6;
         outline-offset: 2px;
         border-radius: 100%;
         top: 16px;
@@ -40,19 +40,19 @@
     }
 
     .low {
-        border: 5px solid #464775;
+        border: 5px solid #6869C6;
     }
 
     .critical {
-        border: 5px solid rgb(197, 0, 0);
+        border: 5px solid #EC0000;
     }
 
     .high {
-        border: 5px solid rgb(255, 103, 8);
+        border: 5px solid #E25600;
     }
 
     .medium {
-        border: 5px solid #FFD700;
+        border: 5px solid #A77F00;
     }
 
     .example-thumb.active {
@@ -120,14 +120,23 @@
             font: normal normal normal 16px/21px Segoe UI;
             opacity: 1;
             height: 40px;
-            background-color: #FFFFFF;
-            color: #000000;
+            background-color: var(--colorNeutralBackground1);
+            color: var(--colorNeutralForeground1);
+            border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
+            &:focus {
+                border: 1px solid var(--colorNeutralForegroundStaticInverted);
+                border-bottom-color: var(--colorNeutralStrokeAccessibleSelected);
+                border-bottom-left-radius: 2px;
+                border-bottom-right-radius: 2px;
+                border-bottom-width: 2px;
+            }
         }
 
         input::placeholder {
             font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
         }
 
     }
@@ -135,16 +144,10 @@
     .incident-details-input-field-disabled {
         input {
             font: normal normal normal 16px/21px Segoe UI;
-            opacity: 1;
             height: 40px;
-            background-color: #D3D3D3;
-            color: #000000;
-        }
-
-        input::placeholder {
-            font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+            background-color: var(--colorNeutralForegroundDisabled);
+            color: var(--colorNeutralForeground1Selected);
+            border: none;
         }
     }
 
@@ -152,14 +155,23 @@
         textArea {
             height: 83%;
             font: normal normal normal 16px/21px Segoe UI;
-            background-color: #FFFFFF;
-            color: #000000;
+            background-color: var(--colorNeutralBackground1);
+            color: var(--colorNeutralForeground1);
+            border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
+            &:focus {
+                border: 1px solid var(--colorNeutralForegroundStaticInverted);
+                border-bottom-color: var(--colorNeutralStrokeAccessibleSelected);
+                border-bottom-left-radius: 2px;
+                border-bottom-right-radius: 2px;
+                border-bottom-width: 2px;
+            }
         }
 
         textArea::placeholder {
             font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
         }
     }
 
@@ -167,118 +179,159 @@
     .incident-details-reason-update-area {
         textArea {
             font: normal normal normal 16px/21px Segoe UI;
-            background-color: #FFFFFF;
-            color: #000000;
+            background-color: var(--colorNeutralBackground1);
+            color: var(--colorNeutralForeground1);
+            border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
+            &:focus {
+                border: 1px solid var(--colorNeutralForegroundStaticInverted);
+                border-bottom-color: var(--colorNeutralStrokeAccessibleSelected);
+                border-bottom-left-radius: 2px;
+                border-bottom-right-radius: 2px;
+                border-bottom-width: 2px;
+            }
         }
 
         textArea::placeholder {
             font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
         }
     }
 
-    .dropdown-placeholder {
+    div[class~="select-role-dropdown"],
+    div[class~="select-role-placeholder"] {
         .ui-dropdown__container {
-            background-color: #FFFFFF !important;
+            background-color: var(--colorNeutralBackground1) !important;
+            border: 1px solid var(--colorNeutralForegroundStaticInverted) !important;
         }
 
         button {
             height: 40px;
 
-            span {
-                font: normal normal normal 14px/21px Segoe UI;
-                color: #727170;
-                opacity: 1;
-            }
-        }
-
-        .ui-box {
-            font: normal normal normal 16px/21px Segoe UI;
-            opacity: 1;
-        }
-    }
-
-    .incident-details-dropdown {
-        .ui-dropdown__container {
-            background-color: #FFFFFF !important;
-        }
-
-        //Dropdown Field
-        button {
-            height: 40px;
-
-            //Dropdown Placeholder
             span {
                 font: normal normal normal 16px/21px Segoe UI;
-                color: #000000;
+                color: var(--colorNeutralForeground1);
                 opacity: 1;
             }
-
         }
 
-        //Dropdown Items
         .ui-box {
             font: normal normal normal 16px/21px Segoe UI;
             opacity: 1;
+
+        }
+
+
+        .ui-list {
+            background-color: var(--colorNeutralBackground1);
+
+            .ui-dropdown__item {
+                background-color: var(--colorNeutralBackground1);
+
+                &:hover {
+                    background-color: var(--colorBrandBackgroundInvertedHover) !important;
+
+                    .ui-box {
+                        color: #000000;
+                    }
+                }
+            }
+        }
+    }
+
+    div[class~="select-role-placeholder"] {
+        button {
+            span {
+                font: normal normal normal 14px/21px Segoe UI;
+                color: var(--colorNeutralForeground1);
+                opacity: 0.7;
+            }
         }
     }
 
     .incident-type-dropdown {
+        border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
         div[class~="ms-ComboBox"] {
             height: 40px;
             border: none;
+            background-color: var(--colorNeutralBackground1) !important;
         }
 
         div[class~="ms-ComboBox"]::after {
             border: none;
         }
 
-        input[type="text"] {
+        input[class~="ms-ComboBox-Input"] {
             font: normal normal normal 16px/21px Segoe UI;
             opacity: 1;
-            color: #000000;
+            color: var(--colorNeutralForeground1);
+            background-color: var(--colorNeutralBackground1) !important;
         }
 
         input::placeholder {
             font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
+        }
+
+        button[class~="ms-ComboBox-CaretDown-button"]:hover {
+            background-color: var(--colorBrandBackgroundInvertedHover);
         }
     }
 
     .incident-status-dropdown {
+        border: 1px solid var(--colorNeutralForegroundStaticInverted);
 
         div[class~="ms-ComboBox"] {
             height: 40px;
             border: none;
+            background-color: var(--colorNeutralBackground1) !important;
+
+            &:hover {
+                color: var(--colorNeutralForeground1);
+            }
         }
 
         div[class~="ms-ComboBox"]::after {
             border: none;
         }
 
-        input[type="text"] {
+        input[class~="ms-ComboBox-Input"] {
             font: normal normal normal 16px/21px Segoe UI;
             opacity: 1;
-            color: #000000;
+            color: var(--colorNeutralForeground1);
+            background-color: var(--colorNeutralBackground1) !important;
+
+            &:hover {
+                color: var(--colorNeutralForeground1);
+            }
         }
 
         input::placeholder {
             font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
+        }
+
+        button[class~="ms-ComboBox-CaretDown-button"]:hover {
+            background-color: var(--colorBrandBackgroundInvertedHover);
         }
     }
 
     .incident-type-dropdown-disabled {
         .ui-dropdown__container {
-            border-bottom: none;
+            border: none;
+            background-color: var(--colorNeutralForegroundDisabled);
+
+            &:hover {
+                background-color: var(--colorNeutralForegroundDisabled) !important;
+            }
         }
 
         .ui-dropdown__selected-items {
-            background-color: #D3D3D3;
-            border: 1px solid #FFFFFF;
+
             border-radius: 0.1875rem;
             height: 40px;
         }
@@ -286,13 +339,38 @@
         .ui-button__content {
             font: normal normal normal 16px/21px Segoe UI;
             opacity: 1;
-            color: #000000;
+            color: var(--colorNeutralForeground1Selected);
         }
 
-        input::placeholder {
-            font: normal normal normal 14px/21px Segoe UI;
-            color: #585858;
-            opacity: 1;
+    }
+
+    div[class~="ms-ComboBox-callout"] {
+        .ms-Callout-main {
+            background-color: var(--colorNeutralBackground1);
+            border: var(--colorNeutralForegroundStaticInverted) 1px solid;
+        }
+    }
+
+    .ms-ComboBox-optionText {
+        color: var(--colorNeutralForeground1);
+    }
+
+    .ms-ComboBox-option:hover {
+        background-color: var(--colorBrandBackgroundInvertedHover) !important;
+
+        .ms-ComboBox-optionText {
+            color: #000000 !important;
+        }
+    }
+
+    .ms-ComboBox:hover {
+        .ms-ComboBox-Input {
+            color: var(--colorNeutralForeground1);
+        }
+
+        .ms-ComboBox-Input::placeholder {
+            color: var(--colorBrandForeground2Pressed);
+            opacity: 0.7;
         }
     }
 
@@ -330,70 +408,154 @@
         padding-left: 3px;
     }
 
-    mgt-people-picker[class="incident-details-people-picker"] {
-        --input-border: 2px #FFFFFF solid;
-        --input-background-color: #FFFFFF;
-        /* input area background color */
-        --input-border-color--hover: #FFFFFF;
-        /* input area border hover color */
-        --input-border-color--focus: #FFFFFF;
-        /* input area border focus color */
-        --dropdown-background-color: #FFFFFF;
-        /* selection area background color */
-        --dropdown-item-hover-background: #8f8f9c;
-        /* person background color on hover */
-        --selected-person-background-color: #8f8f9c;
-        /* person item background color */
-        --dropdown-item-text-color: #000000;
-        /* person item text color in dropdown */
-        --color-sub1: #000000;
-        /* selected person item text color  */
-        --color: white;
-        /* input area border focus color */
-        --placeholder-color: #585858;
-        /* placeholder text color */
-        --placeholder-size: 16px;
-        --placeholder-color--focus: #585858;
-        /* placeholder text focus color */
-    }
+    div[class~="incidentdatepicker-callout"] {
 
-    mgt-people-picker[class="incident-details-people-picker-disabled"] {
-        --input-border: 2px #D3D3D3 solid;
-        --input-background-color: #D3D3D3;
-        /* input area background color */
-        --input-border-color--hover: #D3D3D3;
-        /* input area border hover color */
-        --input-border-color--focus: #D3D3D3;
-        /* input area border focus color */
-        --dropdown-background-color: #D3D3D3;
-        /* selection area background color */
-        --dropdown-item-hover-background: #8f8f9c;
-        /* person background color on hover */
-        --selected-person-background-color: #8f8f9c;
-        /* person item background color */
-        --dropdown-item-text-color: #000000;
-        /* person item text color in dropdown */
-        --color-sub1: #000000;
-        /* selected person item text color  */
-        --color: white;
-        /* input area border focus color */
-        --placeholder-color: #585858;
-        /* placeholder text color */
-        --placeholder-size: 16px;
-        --placeholder-color--focus: #585858;
-        /* placeholder text focus color */
-    }
-
-    .incidentdatepicker-callout {
         button[class~=ms-CalendarDay-dayIsToday] {
-            background-color: #5B5FC7 !important;
+            background-color: #6165DD !important;
+        }
+    }
+
+    div[class~="incidentdatepicker-callout-dark"] {
+        .ms-Callout-main {
+            background-color: #292929;
+        }
+
+        div[class^="monthAndYear"] {
+            color: #ffffff;
+        }
+
+        button[class^="headerIconButton"] {
+            color: #ffffff;
+
+            &:hover {
+                color: #000000;
+            }
+        }
+
+        tr {
+            th[class^="dayCell"] {
+                color: #ffffff;
+            }
+
+            td[class^="dayCell"] {
+                color: #ffffff;
+
+                &:hover {
+                    color: #000000;
+                }
+            }
+
+            td[class*="dayOutsideNavigatedMonth"] {
+                color: #ffffff;
+                opacity: 0.7;
+            }
+
+            td[class~="ms-CalendarDay-daySelected"] {
+                color: #000000;
+            }
+        }
+
+        div[class^="monthPickerWrapper"] {
+
+            button[class^="currentItemButton"],
+            button[class^="navigationButton"],
+            button[class^="itemButton"] {
+                color: #ffffff;
+
+                &:hover {
+                    color: #000000;
+                }
+            }
+
+            button[class^="js-goToday"] {
+                color: #ffffff;
+                opacity: 0.7;
+
+                &:hover {
+                    color: #6165DD;
+                    opacity: 1;
+                }
+            }
+        }
+    }
+
+    div[class~="incidentdatepicker-callout-contrast"] {
+        .ms-Callout-main {
+            background-color: #000000;
+        }
+
+        div[class^="monthAndYear"] {
+            color: #ffffff;
+        }
+
+        button[class^="headerIconButton"] {
+            color: #ffffff;
+
+            &:hover {
+                color: #000000;
+                background-color: #1aebff;
+            }
+        }
+
+        tr {
+            th[class^="dayCell"] {
+                color: #ffffff;
+            }
+
+            td[class^="dayCell"] {
+                color: #ffffff;
+
+                &:hover {
+                    color: #000000;
+                    background-color: #1aebff;
+                }
+            }
+
+            td[class*="dayOutsideNavigatedMonth"] {
+                color: #ffffff;
+                opacity: 0.7;
+            }
+
+            td[class~="ms-CalendarDay-daySelected"] {
+                color: #000000;
+
+                &:hover {
+                    background-color: #1aebff !important;
+                }
+            }
+        }
+
+        div[class^="monthPickerWrapper"] {
+
+            button[class^="currentItemButton"],
+            button[class^="navigationButton"],
+            button[class^="itemButton"] {
+                color: #ffffff;
+
+                &:hover {
+                    color: #000000;
+                    background-color: #1aebff;
+                }
+            }
+
+            button[class^="js-goToday"] {
+                color: #ffffff;
+                opacity: 0.7;
+
+                &:hover {
+                    color: #1aebff;
+                    opacity: 1;
+                }
+            }
         }
     }
 }
 
 
+
 div[class="incident-details"] {
-    background: #F4F4F4 0% 0% no-repeat padding-box;
+    background: var(--colorNeutralBackground2) 0% 0% no-repeat padding-box;
+
     text-align: left;
     letter-spacing: 0px;
     opacity: 1;
@@ -407,7 +569,8 @@ div[class="incident-details"] {
             margin: 5px auto;
             text-align: center;
             font: normal normal 400 14px/24px Segoe UI;
-            color: #33344A;
+            color: var(--colorNeutralForeground1) !important;
+
             opacity: 1;
 
             span[class="back-label"] {
@@ -415,10 +578,15 @@ div[class="incident-details"] {
                 position: relative;
                 bottom: 1px;
                 margin-left: 1px;
+
+                &:hover {
+                    color: var(--colorBrandForegroundLinkHover);
+                }
             }
 
             span[class="back-label"]:focus-visible {
-                outline: 2px solid #414156;
+                outline: 2px solid var(--colorBrandForeground2Pressed);
+
                 border-radius: 3px;
                 outline-offset: 1px;
             }
@@ -440,7 +608,7 @@ div[class="incident-details"] {
         }
     }
 
-    div[class="incident-details-form-area"] {
+    div[class~="incident-details-form-area"] {
         background: #E4E9F5 0% 0% no-repeat padding-box;
         border: 0.25px solid #a3a6b3;
         padding-bottom: 50px;
@@ -448,7 +616,7 @@ div[class="incident-details"] {
 
         div[class="incident-form-head-text"] {
             font: normal normal 400 22px/32px Segoe UI;
-            color: #33344A;
+            color: var(--colorNeutralForeground1) !important;
             margin: 12px auto;
             opacity: 1;
         }
@@ -458,13 +626,13 @@ div[class="incident-details"] {
 
             label {
                 font: normal normal normal 16px/21px Segoe UI;
-                color: #000000;
+                color: var(--colorNeutralForeground1);
                 opacity: 1;
             }
 
             label::after {
                 content: " *";
-                color: #FF0000;
+                color: #ce0000;
             }
 
             label[class="FormInput-label"] {
@@ -479,7 +647,7 @@ div[class="incident-details"] {
 
             label[class="FormInput-label"]::after {
                 content: " *";
-                color: #FF0000
+                color: #ce0000;
             }
 
             span[class~="role-user-info-icon"] {
@@ -505,9 +673,9 @@ div[class="incident-details"] {
             }
 
             button[id="manage-role-disabled-btn"] {
-                background-color: auto;
+                background-color: var(--colorNeutralForegroundDisabled);
 
-                img[class="manage-role-btn-icon"] {
+                img[class~="manage-role-btn-icon"] {
                     width: 20px;
                     height: 20px;
                 }
@@ -526,18 +694,24 @@ div[class="incident-details"] {
             }
 
             button[id="manage-role-btn"] {
-                background-color: rgb(88, 90, 150);
+                background-color: var(--colorBrandBackground);
                 opacity: 1;
 
-                img[class="manage-role-btn-icon"] {
+                img[class~="manage-role-btn-icon"] {
                     width: 20px;
                     height: 20px;
+                }
+
+                img[class~="add-icon-contrast"] {
+                    border: 1px solid var(--colorNeutralForegroundOnBrand);
+                    border-radius: 50%;
                 }
 
                 label[class="manage-role-btn-label"] {
                     cursor: pointer;
                     font: normal normal bold 18px/24px Segoe UI;
-                    color: #FFFFFF;
+                    color: var(--colorNeutralForegroundOnBrand);
+
                     text-transform: capitalize;
                     opacity: 1;
                 }
@@ -565,9 +739,15 @@ div[class="incident-details"] {
                         border: none;
                         height: 40px;
                         padding: 5px;
+                        background-color: var(--colorNeutralBackground1) !important;
+                        border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
+                        div[class~=ms-TextField-field] {
+                            color: var(--colorNeutralForeground1);
+                        }
 
                         div:focus {
-                            outline: 2px solid #414156;
+                            outline: 2px solid var(--colorBrandForeground2Pressed);
                             border-radius: 2px;
                         }
                     }
@@ -582,10 +762,22 @@ div[class="incident-details"] {
 
                     div[class~=ms-ComboBox] {
                         height: 40px;
+                        background-color: var(--colorNeutralBackground1) !important;
+                        border: 1px solid var(--colorNeutralForegroundStaticInverted);
+
                     }
 
                     div[class~=ms-ComboBox]::after {
                         border-style: none;
+                    }
+
+                    input[class~=ms-ComboBox-Input] {
+                        background-color: var(--colorNeutralBackground1) !important;
+                        color: var(--colorNeutralForeground1);
+                    }
+
+                    button[class~="ms-ComboBox-CaretDown-button"]:hover {
+                        background-color: var(--colorBrandBackgroundInvertedHover);
                     }
 
                 }
@@ -635,7 +827,7 @@ div[class="incident-details"] {
             }
 
             tr[class~="role-grid-tbody"] {
-                background: #FFFFFF 0% 0% no-repeat padding-box;
+                background: var(--colorNeutralForegroundInverted) 0% 0% no-repeat padding-box;
                 width: 100%;
                 margin-left: 0px;
                 border-left: 0.25px solid #979593;
@@ -644,7 +836,7 @@ div[class="incident-details"] {
                 height: auto;
                 padding: 7px;
                 font: normal normal normal 16px/21px Segoe UI;
-                color: #000000;
+                color: var(--colorNeutralForeground1);
 
                 @media screen and (max-width:1059px) {
                     font: normal normal normal 13px/20px Segoe UI;
@@ -672,11 +864,19 @@ div[class="incident-details"] {
                     justify-content: center;
                     align-items: center;
 
-                    img[class="role-icon"] {
-                        width: 20px;
-                        height: 23px;
+                    svg[class~="role-icon"] {
                         cursor: pointer;
                     }
+
+                    svg[class~="role-icon"]:hover {
+                        color: var(--colorBrandForegroundLink);
+                    }
+                }
+
+
+
+                div[class~="ms-Checkbox-checkbox"] {
+                    border: 1px solid var(--colorNeutralForeground1);
                 }
 
                 div[class~="editRoleCol"] {
@@ -688,10 +888,25 @@ div[class="incident-details"] {
                     align-items: center;
                 }
             }
+
+            tr[class~="table-header-darkcontrast"] {
+                background: var(--colorCompoundBrandForeground1);
+                color: #000000;
+
+            }
+
         }
 
         div[class~="role-checkbox"] {
             margin-top: 25px;
+
+            div[class~="ms-Checkbox-checkbox"] {
+                border: 1px solid var(--colorNeutralForeground1);
+            }
+
+            span[class~="ms-Checkbox-text"] {
+                color: var(--colorNeutralForeground1);
+            }
         }
 
         div[class~="inc-assets-wrapper"] {
@@ -730,7 +945,7 @@ div[class="incident-details"] {
                         text-align: left;
                         font: normal normal normal 16px/21px Segoe UI;
                         letter-spacing: 0px;
-                        color: #000000;
+                        color: var(--colorNeutralForeground1) !important;
                         opacity: 1;
                     }
 
@@ -1002,24 +1217,29 @@ div[class="incident-details"] {
             }
 
             @media screen and (max-width:835px) {
-                button[id="new-incident-back-btn"] {
+                button[class~="new-incident-back-btn"] {
                     margin-bottom: 10px;
                 }
             }
 
-            button[id="new-incident-back-btn"] {
+            button[class~="new-incident-back-btn"] {
                 width: 106px;
                 height: 46px;
                 border-color: #FFFFFF;
+                background-color: var(--colorNeutralBackground1);
+                color: var(--colorNeutralForeground1);
             }
 
-            button[id="new-incident-back-btn"]:hover {
-                border-color: rgb(237, 235, 233);
+            button[class~="new-incident-back-btn"]:hover {
+                background: var(--colorNeutralBackground1Hover);
+                color: var(--colorNeutralForeground1Hover);
             }
 
-            button[id="new-incident-create-btn"] {
+            button[class~="new-incident-create-btn"] {
                 width: 230px;
                 height: 46px;
+                background: var(--colorBrandBackground);
+                color: var(--colorNeutralForegroundOnBrand);
 
                 img {
                     width: 30px;
@@ -1027,7 +1247,74 @@ div[class="incident-details"] {
                     margin-right: 5px;
                     margin-bottom: 5px;
                 }
+
+                &:hover {
+                    background: var(--colorBrandBackgroundHover);
+                }
             }
+
+            button[class~="create-icon-contrast"] {
+                img {
+                    filter: brightness(0) saturate(100%) invert(0%) sepia(0%) saturate(7481%) hue-rotate(282deg) brightness(81%) contrast(101%);
+                }
+            }
+        }
+
+        div[class="add-role-message"] {
+            color: var(--colorPaletteLightGreenForeground2);
+        }
+
+        mgt-people-picker[class="incident-details-people-picker"] {
+            --input-border: 1px solid var(--colorNeutralForegroundStaticInverted);
+            --input-background-color: var(--colorNeutralBackground1);
+            /* input area background color */
+            --input-border-color--hover: #FFFFFF;
+            /* input area border hover color */
+            --input-border-color--focus: #FFFFFF;
+            /* input area border focus color */
+            --dropdown-background-color: var(--colorNeutralBackground1);
+            /* selection area background color */
+            --dropdown-item-hover-background: #8C8C91;
+            /* person background color on hover */
+            --selected-person-background-color: #8C8C91;
+            /* person item background color */
+            --dropdown-item-text-color: #000000;
+            /* selected person item text color  */
+            --color: #000000;
+            /* person item text color in dropdown */
+            --color-sub1: #000000;
+            /* input area border focus color */
+            --placeholder-color: #585858;
+            /* placeholder text color */
+            --placeholder-size: 16px;
+            --placeholder-color--focus: #585858;
+            /* placeholder text focus color */
+        }
+
+    }
+
+    div[class~="form-area-darkcontrast"] {
+        background: var(--colorNeutralBackground1);
+        border: none;
+
+        div[class="incident-grid-item"] {
+            label::after {
+                color: #FD656A;
+            }
+
+            label[class="FormInput-label"]::after {
+                color: #FD656A;
+            }
+
+            label[class="message-label"] {
+                color: #FD656A;
+            }
+        }
+
+        mgt-people-picker[class="incident-details-people-picker"] {
+            --color-sub1: var(--colorNeutralForeground1);
+            --dropdown-item-text-color: var(--colorNeutralForeground1);
+            --dropdown-item-hover-background: var(--colorBrandBackgroundInvertedHover);
         }
 
         div[class="add-role-message"] {
@@ -1067,7 +1354,7 @@ div[class="incident-details"] {
                     display: none !important;
                 }
 
-                button[id="new-incident-create-btn"] {
+                button[class~="new-incident-create-btn"] {
                     width: 100%;
                 }
             }
