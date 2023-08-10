@@ -14,10 +14,7 @@ import * as graphConfig from '../common/graphConfig';
 import siteConfig from '../config/siteConfig.json';
 import '../scss/Dashboard.module.scss';
 import { Person } from '@microsoft/mgt-react';
-import {
-    Popover, PopoverSurface,
-    PopoverTrigger,
-} from "@fluentui/react-components";
+import { Popover, PopoverSurface, PopoverTrigger } from "@fluentui/react-components";
 
 export interface IDashboardProps {
     graph: Client;
@@ -60,6 +57,9 @@ export interface IDashboardState {
     incidentIdAriaSort: any;
     incidentNameAriaSort: any;
     locationAriaSort: any;
+    severityAriaSort: any;
+    incidentCommanderObjAriaSort: any;
+    startDateAriaSort: any;
 }
 
 // interface for Dashboard fields
@@ -97,6 +97,9 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
             incidentIdAriaSort: "",
             incidentNameAriaSort: "",
             locationAriaSort: "",
+            severityAriaSort: "",
+            incidentCommanderObjAriaSort: "",
+            startDateAriaSort: ""
         };
 
         this.actionFormatter = this.actionFormatter.bind(this);
@@ -292,7 +295,8 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
             return ((incident["incidentName"] && incident["incidentName"].toLowerCase().indexOf(searchKeyword) > -1) ||
                 (incident["incidentId"] && (incident["incidentId"]).toString().toLowerCase().indexOf(searchKeyword) > -1) ||
                 (incident["incidentCommander"] && incident["incidentCommander"].toLowerCase().indexOf(searchKeyword) > -1) ||
-                (incident["location"] && incident["location"].toLowerCase().indexOf(searchKeyword) > -1))
+                (incident["location"] && incident["location"].toLowerCase().indexOf(searchKeyword) > -1) ||
+                (incident["severity"] && incident["severity"].toLowerCase().indexOf(searchKeyword) > -1))
         });
 
         //On Click of Cancel icon
@@ -302,9 +306,9 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
         this.setState({
             searchText: searchText.target.value,
             filteredAllIncidents: filteredAllIncidents,
-            filteredPlanningIncidents: filteredAllIncidents.filter((e: any) => e.status === constants.planning),
-            filteredActiveIncidents: filteredAllIncidents.filter((e: any) => e.status === constants.active),
-            filteredCompletedIncidents: filteredAllIncidents.filter((e: any) => e.status === constants.closed),
+            filteredPlanningIncidents: filteredAllIncidents.filter((e: any) => e.incidentStatusObj.status === constants.planning),
+            filteredActiveIncidents: filteredAllIncidents.filter((e: any) => e.incidentStatusObj.status === constants.active),
+            filteredCompletedIncidents: filteredAllIncidents.filter((e: any) => e.incidentStatusObj.status === constants.closed),
         });
     }
 
@@ -322,7 +326,9 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     if (event.key === constants.enterKey)
                         this.onDeepLinkClick(gridRow)
                 }}
-            >{cell}</span>
+            >
+                <span title={cell} aria-hidden="true">{cell}</span>
+            </span>
         );
     }
 
@@ -340,7 +346,9 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     if (event.key === constants.enterKey)
                         this.onDeepLinkClick(gridRow)
                 }}
-            >{cell}</span>
+            >
+                <span title={cell} aria-hidden="true">{cell}</span>
+            </span>
         );
     }
 
@@ -348,7 +356,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
     severityFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
         const ariaLabel = `${this.props.localeStrings.fieldSeverity} ${cell}`
         return (
-            <span aria-label={ariaLabel}>{cell}</span>
+            <span aria-label={ariaLabel}><span title={cell} aria-hidden="true">{cell}</span></span>
         );
     }
 
@@ -369,17 +377,26 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
     statusFormatter = (cell: any, row: any, rowIndex: any, formatExtraData: any) => {
         if (row.incidentStatusObj.status === constants.closed) {
             return (
-                <img src={require("../assets/Images/ClosedIcon.svg").default} aria-label={`${this.props.localeStrings.status} ${this.props.localeStrings.closed}`} className="status-icon" />
+                <span aria-label={`${this.props.localeStrings.status} ${this.props.localeStrings.closed}`} role="status">
+                    <img src={require("../assets/Images/ClosedIcon.svg").default} className="status-icon"
+                        aria-hidden="true" title={this.props.localeStrings.closed} />
+                </span>
             );
         }
         if (row.incidentStatusObj.status === constants.active) {
             return (
-                <img src={require("../assets/Images/ActiveIcon.svg").default} aria-label={`${this.props.localeStrings.status} ${this.props.localeStrings.active}`} className="status-icon" />
+                <span aria-label={`${this.props.localeStrings.status} ${this.props.localeStrings.active}`} role="status">
+                    <img src={require("../assets/Images/ActiveIcon.svg").default} className="status-icon"
+                        aria-hidden="true" title={this.props.localeStrings.active} />
+                </span>
             );
         }
         if (row.incidentStatusObj.status === constants.planning) {
             return (
-                <img src={require("../assets/Images/PlanningIcon.svg").default} aria-label={`${this.props.localeStrings.status} ${this.props.localeStrings.planning}`} className="status-icon" />
+                <span aria-label={`${this.props.localeStrings.status} ${this.props.localeStrings.planning}`} role="status">
+                    <img src={require("../assets/Images/PlanningIcon.svg").default} className="status-icon"
+                        aria-hidden="true" title={this.props.localeStrings.planning} />
+                </span>
             );
         }
     };
@@ -388,7 +405,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
     locationFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
         const ariaLabel = `${this.props.localeStrings.location} ${cell}`
         return (
-            <span aria-label={ariaLabel}>{cell}</span>
+            <span aria-label={ariaLabel}><span aria-hidden="true" title={cell}>{cell}</span></span>
         );
     }
 
@@ -396,7 +413,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
     startDateTimeFormatter = (cell: any, gridRow: any, rowIndex: any, formatExtraData: any) => {
         const ariaLabel = `${this.props.localeStrings.startDate} ${cell}`
         return (
-            <span aria-label={ariaLabel}>{cell}</span>
+            <span aria-label={ariaLabel}><span aria-hidden="true" title={cell}>{cell}</span></span>
         );
     }
 
@@ -405,10 +422,8 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
         return (
             <span>
                 {/* active dashboard icon in dashboard, on click will navigate to edit incident form */}
-                <img
-                    src={require("../assets/Images/ActiveBridgeIcon.svg").default}
+                <span
                     aria-label={`${this.props.localeStrings.action} ${this.props.localeStrings.activeDashboard}`}
-                    className="grid-active-bridge-icon"
                     onClick={() => this.props.onShowActiveBridge(gridRow)}
                     onKeyDown={(event) => {
                         if (event.key === constants.enterKey)
@@ -416,12 +431,17 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     }}
                     tabIndex={0}
                     role="button"
-                />
+                >
+                    <img
+                        src={require("../assets/Images/ActiveBridgeIcon.svg").default}
+                        className="grid-active-bridge-icon"
+                        aria-hidden="true"
+                        title={this.props.localeStrings.activeDashboard}
+                    />
+                </span>
                 {/* edit icon in dashboard, on click will navigate to edit incident form */}
-                <img
-                    src={require("../assets/Images/GridEditIcon.svg").default}
+                <span
                     aria-label={`${this.props.localeStrings.action} ${this.props.localeStrings.edit}`}
-                    className="grid-edit-icon"
                     onClick={() => this.props.onEditButtonClick(gridRow)}
                     onKeyDown={(event) => {
                         if (event.key === constants.enterKey)
@@ -429,13 +449,18 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     }}
                     tabIndex={0}
                     role="button"
-                />
+                >
+                    <img
+                        src={require("../assets/Images/GridEditIcon.svg").default}
+                        className="grid-edit-icon"
+                        aria-hidden="true"
+                        title={this.props.localeStrings.edit}
+                    />
+                </span>
 
                 {/* view version history icon in dashboard, on click will navigate to incident history form */}
-                <img
-                    src={require("../assets/Images/IncidentHistoryIcon.svg").default}
+                <span
                     aria-label={`${this.props.localeStrings.action} ${this.props.localeStrings.viewIncidentHistory}`}
-                    className="grid-version-history-icon"
                     onClick={() => this.props.onShowIncidentHistory(gridRow.incidentId)}
                     onKeyDown={(event) => {
                         if (event.key === constants.enterKey)
@@ -443,7 +468,14 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     }}
                     tabIndex={0}
                     role="button"
-                />
+                >
+                    <img
+                        src={require("../assets/Images/IncidentHistoryIcon.svg").default}
+                        className="grid-version-history-icon"
+                        aria-hidden="true"
+                        title={this.props.localeStrings.viewIncidentHistory}
+                    />
+                </span>
             </span>
         );
     }
@@ -484,7 +516,6 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                             <img
                                 src={require("../assets/Images/ManageIcon.svg").default}
                                 className={`manage-icon${this.props.currentThemeName === constants.defaultMode ? "" : " manage-icon-darkcontrast"}`}
-
                                 alt=""
                             />
                             <img
@@ -554,8 +585,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                     onClick={() => this.props.onCreateTeamClick()}
                     title={this.props.localeStrings.btnCreateIncident}
                 >
-                    <img src={require("../assets/Images/ButtonEditIcon.svg").default} />
-
+                    <img src={require("../assets/Images/ButtonEditIcon.svg").default} alt={this.props.localeStrings.btnCreateIncident} />
                     {this.props.localeStrings.btnCreateIncident}
                 </Button>
             </Flex>
@@ -568,45 +598,109 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
         const id = column.dataField;
         if (!order) {
             return (
-                <span className="sort-order" id={id} aria-label={ariaLabel}>
+                <div className="sort-order" id={id} aria-label={ariaLabel}>
                     <span className="dropdown-caret">
                     </span>
                     <span className="dropup-caret">
                     </span>
-                </span>);
+                </div>);
         }
         else if (order === 'asc') {
-            column.dataField === "incidentId" ?
-                this.setState({ incidentIdAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "", locationAriaSort: "" }) :
-                column.dataField === "incidentName" ?
-                    this.setState({ incidentNameAriaSort: constants.sortAscAriaSort, incidentIdAriaSort: "", locationAriaSort: "" }) :
-                    this.setState({ locationAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "" })
+            switch (column.dataField) {
+                case "incidentId":
+                    this.setState({
+                        incidentIdAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "", locationAriaSort: "",
+                        severityAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                case "incidentName":
+                    this.setState({
+                        incidentNameAriaSort: constants.sortAscAriaSort, incidentIdAriaSort: "",
+                        locationAriaSort: "", severityAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                case "location":
+                    this.setState({
+                        locationAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "",
+                        severityAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                case "severity":
+                    this.setState({
+                        severityAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "",
+                        locationAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    })
+                    break;
+                case "incidentCommanderObj":
+                    this.setState({
+                        incidentCommanderObjAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "",
+                        incidentIdAriaSort: "", locationAriaSort: "", severityAriaSort: "", startDateAriaSort: ""
+                    })
+                    break;
+                default:
+                    this.setState({
+                        startDateAriaSort: constants.sortAscAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "",
+                        locationAriaSort: "", severityAriaSort: "", incidentCommanderObjAriaSort: ""
+                    });
+            }
             return (
-                <span className="sort-order">
+                <div className="sort-order">
                     <span className="dropup-caret">
                     </span>
-                </span>);
+                </div>);
         }
         else if (order === 'desc') {
-            column.dataField === "incidentId" ?
-                this.setState({ incidentIdAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "", locationAriaSort: "" }) :
-                column.dataField === "incidentName" ?
-                    this.setState({ incidentNameAriaSort: constants.sortDescAriaSort, incidentIdAriaSort: "", locationAriaSort: "" }) :
-                    this.setState({ locationAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "" })
+            switch (column.dataField) {
+                case "incidentId":
+                    this.setState({
+                        incidentIdAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "", locationAriaSort: "",
+                        severityAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                case "incidentName":
+                    this.setState({
+                        incidentNameAriaSort: constants.sortDescAriaSort, incidentIdAriaSort: "", locationAriaSort: "",
+                        severityAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    })
+                    break;
+                case "location":
+                    this.setState({
+                        locationAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "",
+                        severityAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                case "severity":
+                    this.setState({
+                        severityAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "",
+                        locationAriaSort: "", incidentCommanderObjAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                case "incidentCommanderObj":
+                    this.setState({
+                        incidentCommanderObjAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "",
+                        incidentIdAriaSort: "", locationAriaSort: "", severityAriaSort: "", startDateAriaSort: ""
+                    });
+                    break;
+                default:
+                    this.setState({
+                        startDateAriaSort: constants.sortDescAriaSort, incidentNameAriaSort: "", incidentIdAriaSort: "",
+                        locationAriaSort: "", severityAriaSort: "", incidentCommanderObjAriaSort: ""
+                    });
+            }
             return (
-                <span className="sort-order">
+                <div className="sort-order">
                     <span className="dropdown-caret">
                     </span>
-                </span>);
+                </div>);
         }
         return null;
     }
 
     //custom header format for sortable column for accessbility
     headerFormatter(column: any, colIndex: any, { sortElement, filterElement }: any) {
-        const id = column.dataField;
         //adding sortable information to aria-label to fix the accessibility issue in iOS Voiceover
         if (navigator.userAgent.match(/iPhone/i)) {
+            const id = column.dataField;
             return (
                 <button tabIndex={-1} aria-describedby={id} aria-label={column.text} className='sort-header'>
                     {column.text}
@@ -616,10 +710,10 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
         }
         else {
             return (
-                <>
-                    {column.text}
+                <div aria-hidden="true" title={column.text} className='header-div-wrapper'>
+                    <span className='header-span-text'>{column.text}</span>
                     {sortElement}
-                </>
+                </div>
             );
         }
     }
@@ -627,7 +721,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
 
     public render() {
         // Header object for dashboard
-        const dashboardHeader = [
+        const dashboardHeader: any = [
             {
                 dataField: 'incidentId',
                 text: this.props.localeStrings.incidentId,
@@ -637,7 +731,6 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                 headerFormatter: this.headerFormatter,
                 headerAttrs: { 'aria-sort': this.state.incidentIdAriaSort, 'role': 'columnheader', 'scope': 'col' },
                 attrs: { 'role': 'presentation' }
-
             }, {
                 dataField: 'incidentName',
                 text: this.props.localeStrings.incidentName,
@@ -647,28 +740,32 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                 headerFormatter: this.headerFormatter,
                 headerAttrs: { 'aria-sort': this.state.incidentNameAriaSort, 'role': 'columnheader', 'scope': 'col' },
                 attrs: { 'role': 'presentation' }
-
             }, {
                 dataField: 'severity',
                 text: this.props.localeStrings.fieldSeverity,
                 formatter: this.severityFormatter,
-                headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
-                attrs: { 'role': 'presentation' }
-
+                headerAttrs: { 'aria-sort': this.state.severityAriaSort, 'role': 'columnheader', 'scope': 'col' },
+                attrs: { 'role': 'presentation' },
+                sort: true,
+                sortValue: (cell: any) => constants.severity.indexOf(cell),
+                sortCaret: this.customSortCaret,
+                headerFormatter: this.headerFormatter
             }, {
                 dataField: 'incidentCommanderObj',
                 text: this.props.localeStrings.incidentCommander,
                 formatter: this.incidentCommanderFormatter,
-                headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
-                attrs: { 'role': 'presentation' }
-
+                headerAttrs: { 'aria-sort': this.state.incidentCommanderObjAriaSort, 'role': 'columnheader', 'scope': 'col' },
+                attrs: { 'role': 'presentation' },
+                sort: true,
+                sortCaret: this.customSortCaret,
+                headerFormatter: this.headerFormatter
             }, {
                 dataField: 'status',
                 text: this.props.localeStrings.status,
                 formatter: this.statusFormatter,
-                headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
-                attrs: { 'role': 'presentation' }
-
+                headerAttrs: { 'role': 'columnheader', 'scope': 'col', "aria-label": this.props.localeStrings.status },
+                attrs: { 'role': 'presentation' },
+                headerFormatter: this.headerFormatter
             }, {
                 dataField: 'location',
                 text: this.props.localeStrings.location,
@@ -678,21 +775,24 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                 formatter: this.locationFormatter,
                 headerAttrs: { 'aria-sort': this.state.locationAriaSort, 'role': 'columnheader', 'scope': 'col' },
                 attrs: { 'role': 'presentation' }
-
             }, {
                 dataField: 'startDate',
                 text: this.props.localeStrings.startDate,
                 formatter: this.startDateTimeFormatter,
-                headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
-                attrs: { 'role': 'presentation' }
-
+                headerAttrs: { 'aria-sort': this.state.startDateAriaSort, 'role': 'columnheader', 'scope': 'col' },
+                attrs: { 'role': 'presentation' },
+                sort: true,
+                sortValue: (cell: any) => new Date(cell),
+                sortCaret: this.customSortCaret,
+                headerFormatter: this.headerFormatter
             }, {
                 dataField: 'action',
                 text: this.props.localeStrings.action,
                 formatter: this.actionFormatter,
-                headerAttrs: { 'role': 'columnheader', 'scope': 'col' },
+                headerAttrs: { 'role': 'columnheader', 'scope': 'col', "aria-label": this.props.localeStrings.action },
                 attrs: { 'role': 'presentation' },
-                classes: `edit-icon-${this.props.currentThemeName}`
+                classes: `edit-icon-${this.props.currentThemeName}`,
+                headerFormatter: this.headerFormatter
             }
         ]
         const isDarkOrContrastTheme = this.props.currentThemeName === constants.darkMode || this.props.currentThemeName === constants.contrastMode;
@@ -700,9 +800,7 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
         return (
             <>
                 {this.state.showLoader ?
-                    <>
-                        <Loader label={this.state.loaderMessage} size="largest" />
-                    </>
+                    <Loader label={this.state.loaderMessage} size="largest" />
                     :
                     <div>
                         <div className={`dashboard-search-btn-area${isDarkOrContrastTheme ? " eoc-searcharea-darkcontrast" : ""}`}>
@@ -768,7 +866,6 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                         onRenderItemLink={this._customRenderer}
                                     >
                                         <BootstrapTable
-
                                             bootstrap4
                                             bordered={false}
                                             keyField="incidentId"
@@ -776,7 +873,6 @@ class Dashboard extends React.PureComponent<IDashboardProps, IDashboardState> {
                                             data={this.state.filteredAllIncidents}
                                             wrapperClasses={isDarkOrContrastTheme ? "table-darkcontrast" : ""}
                                             headerClasses={isDarkOrContrastTheme ? "table-header-darkcontrast" : ""}
-
                                             pagination={this.pagination}
                                             noDataIndication={() => (<div id="noincident-all-tab" aria-live="polite" role="status">{this.props.localeStrings.noIncidentsFound}</div>)}
                                         />

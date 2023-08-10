@@ -11,7 +11,7 @@
    "_support.comment": "This string is displayed as tooltip for dashboard icon",
    "feedback": "Feedback",
    "_feedback.comment": "This string is displayed as tooltip for dashboard icon",
-   "searchPlaceholder": "Search by Incident Name / Incident Commander / Location",
+   "searchPlaceholder": "Search by Incident Name / Incident Commander / Location / Severity",
    "_searchPlaceholder.comment": "This is placeholder for Search textbox",
    "all": "All",
    "_all.comment": "This string is displayed as table header indicating that it's showing All incidents in the table",

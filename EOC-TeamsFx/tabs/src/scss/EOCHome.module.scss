@@ -99,10 +99,14 @@ div[class~="eoc-header"] {
 
 div[class~="sub-header"] {
     opacity: 1;
-    background-color: var(--colorNeutralBackground1);
+    background-color: #464775;
     height: 69px;
     min-width: 100%;
     padding-top: 18px;
+    background-image: url('../assets/Images/BannerImageDefault.svg');
+    background-repeat: no-repeat;
+    background-size: cover;
+    background-position: center center;
 
     div[id="sub-heading"] {
         text-align: left;
@@ -113,25 +117,14 @@ div[class~="sub-header"] {
     }
 }
 
-div[class~="welcome-image-default"] {
-    background-image: url('../assets/Images/BannerImageDefault.svg');
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center center;
-}
-
-div[class~="welcome-image-dark"] {
+div[class~="sub-header-dark"] {
+    background-color: var(--colorNeutralBackground1);
     background-image: url('../assets/Images/BannerImageDark.svg');
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center center;
 }
 
-div[class~="welcome-image-contrast"] {
+div[class~="sub-header-contrast"] {
+    background-color: var(--colorNeutralBackground1);
     background-image: url('../assets/Images/BannerImageContrast.svg');
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-position: center center;
 }
 
 div[role="tooltip"]>div {

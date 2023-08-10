@@ -6,7 +6,7 @@ const localizedStrings = {
                 moreInfo: "More Info",
                 support: "Support",
                 feedback: "Feedback",
-                searchPlaceholder: "Search by Incident Name / Incident Commander / Location",
+                searchPlaceholder: "Search by Incident Name / Incident Commander / Location / Severity",
                 all: "All",
                 planning: "Planning",
                 active: "Active",

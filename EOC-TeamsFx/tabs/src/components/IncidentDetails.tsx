@@ -1,6 +1,6 @@
 import {
     Button, ChevronStartIcon, CloseIcon, Flex,
-    FormDropdown, FormInput, FormTextArea, Loader, Checkbox as NorthstarCheckbox
+    FormDropdown, FormInput, FormTextArea, Loader
 } from "@fluentui/react-northstar";
 import { LocalizationHelper, PeoplePicker, PersonType, UserType } from '@microsoft/mgt-react';
 import { Client } from "@microsoft/microsoft-graph-client";
@@ -30,7 +30,8 @@ import { Toggle } from '@fluentui/react/lib/Toggle';
 import { AddIcon } from '@fluentui/react-icons-northstar';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { DatePicker, IComboBox, TimePicker, ComboBox } from "@fluentui/react";
-import { PeopleEdit24Regular, Delete24Regular, Dismiss24Regular, Save24Regular } from "@fluentui/react-icons";
+import { PeopleEdit24Regular, Delete24Regular, Dismiss24Regular, Save24Regular, PeopleCheckmark24Regular, CloudLink24Regular } from "@fluentui/react-icons";
+import { Checkbox as Fluent9CheckBox } from "@fluentui/react-components"
 
 const calloutProps = { gapSpace: 0 };
 
@@ -3910,7 +3911,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                     <span>&nbsp;&nbsp;{this.props.localeStrings.formTitle}</span>
                                 </label>
                             </div>
-                            <div className={`incident-details-form-area${isDarkOrContrastTheme ? " form-area-darkcontrast" : ""}`}>
+                            <div className={`incident-details-form-area${isDarkOrContrastTheme ? " incident-details-form-area-darkcontrast" : ""}`}>
                                 <div className="container">
                                     <h2 aria-live="polite" role="alert"> <div className="incident-form-head-text">
                                         {!this.props.isEditMode ?
@@ -4307,28 +4308,13 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                     <Col as="th" md={3} sm={3} xs={3} key={1} className="thead-border-left">{this.props.localeStrings.headerUsers}</Col>
                                                     <Col as="th" md={3} sm={3} xs={3} key={2} className="thead-border-left">{this.props.localeStrings.leadLabel}</Col>
                                                     <Col as="th" md={1} sm={1} xs={1} key={3} className="thead-border-left col-center">
-                                                        <img
-                                                            src={require("../assets/Images/AddRole.svg").default}
-                                                            alt="Add Role"
-                                                            className="role-select-head-icon"
-                                                            title={this.props.localeStrings.roleCheckboxTooltip}
-                                                        />
+                                                        <PeopleCheckmark24Regular className="role-header-icon" title={this.props.localeStrings.roleCheckboxTooltip} />
                                                     </Col>
                                                     <Col as="th" md={1} sm={1} xs={1} key={4} className="thead-border-left col-center">
-                                                        <img
-                                                            src={require("../assets/Images/ButtonEditIcon.svg").default}
-                                                            alt="Edit"
-                                                            className="role-edit-head-icon"
-                                                            title={this.props.localeStrings.headerEdit}
-                                                        />
+                                                        <PeopleEdit24Regular className="role-header-icon" title={this.props.localeStrings.headerEdit} />
                                                     </Col>
                                                     <Col as="th" md={1} sm={1} xs={1} key={5} className="thead-border-left col-center">
-                                                        <img
-                                                            src={require("../assets/Images/DeleteBoldIcon.svg").default}
-                                                            alt="Delete"
-                                                            className="role-delete-head-icon"
-                                                            title={this.props.localeStrings.headerDelete}
-                                                        />
+                                                        <Delete24Regular title={this.props.localeStrings.headerDelete} className="role-header-icon" />
                                                     </Col>
                                                 </Row>
                                                 {this.state.roleAssignments.map((item, index) => (
@@ -4379,8 +4365,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
                                                                         <Save24Regular aria-label="Save"
                                                                             className="role-icon"
-                                                                            onClick={(e:any) => this.updateRoleAssignment(index)}
-                                                                            onKeyDown={(event:any) => {
+                                                                            onClick={(e: any) => this.updateRoleAssignment(index)}
+                                                                            onKeyDown={(event: any) => {
                                                                                 if (event.key === constants.enterKey)
                                                                                     this.updateRoleAssignment(index)
                                                                             }}
@@ -4392,8 +4378,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     <Col as="td" md={1} sm={2} xs={2} className="editRoleCol">
                                                                         <Dismiss24Regular aria-label="Cancel"
                                                                             className="role-icon"
-                                                                            onClick={(e:any) => this.exitEditModeForRoles(index)}
-                                                                            onKeyDown={(event:any) => {
+                                                                            onClick={(e: any) => this.exitEditModeForRoles(index)}
+                                                                            onKeyDown={(event: any) => {
                                                                                 if (event.key === constants.enterKey)
                                                                                     this.exitEditModeForRoles(index)
                                                                             }}
@@ -4420,8 +4406,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                 <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
                                                                     <PeopleEdit24Regular
                                                                         className="role-icon"
-                                                                        onClick={(e:any) => this.editRoleItem(index)}
-                                                                        onKeyDown={(event:any) => {
+                                                                        onClick={(e: any) => this.editRoleItem(index)}
+                                                                        onKeyDown={(event: any) => {
                                                                             if (event.key === constants.enterKey)
                                                                                 this.editRoleItem(index)
                                                                         }}
@@ -4433,8 +4419,8 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                 <Col as="td" md={1} sm={1} xs={1} className="col-center role-body-icons">
                                                                     <Delete24Regular
                                                                         className="role-icon"
-                                                                        onClick={(e:any) => this.deleteRoleItem(index)}
-                                                                        onKeyDown={(event:any) => {
+                                                                        onClick={(e: any) => this.deleteRoleItem(index)}
+                                                                        onKeyDown={(event: any) => {
                                                                             if (event.key === constants.enterKey)
                                                                                 this.deleteRoleItem(index)
                                                                         }}
@@ -4556,56 +4542,60 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                 />
                                                 {this.state.toggleCloudStorageLocation &&
                                                     <>
-                                                        <div className="field-with-error">
-                                                            <FormInput
-                                                                type="text"
-                                                                placeholder={this.props.localeStrings.cloudStorageFieldPlaceholder}
-                                                                fluid={true}
-                                                                onChange={(event: any) => this.onTextInputChange(event, "cloudStorageLink")}
-                                                                value={this.state.incDetailsItem.cloudStorageLink}
-                                                                className={this.state.isEditMode ? "incident-details-input-field disabled-input" : "incident-details-input-field"}
-                                                                successIndicator={false}
-                                                                title={this.state.incDetailsItem.cloudStorageLink}
-                                                                disabled={this.state.isEditMode}
-                                                            />
+                                                        <div className="cloud-link-fields">
+                                                            <div className="cloud-storage-field">
+                                                                <FormInput
+                                                                    type="text"
+                                                                    placeholder={this.props.localeStrings.cloudStorageFieldPlaceholder}
+                                                                    fluid={true}
+                                                                    onChange={(event: any) => this.onTextInputChange(event, "cloudStorageLink")}
+                                                                    value={this.state.incDetailsItem.cloudStorageLink}
+                                                                    className={this.state.isEditMode ? "incident-details-input-field disabled-input" : "incident-details-input-field"}
+                                                                    successIndicator={false}
+                                                                    title={this.state.incDetailsItem.cloudStorageLink}
+                                                                    disabled={this.state.isEditMode}
+                                                                />
+                                                                <span title={this.props.localeStrings.testCloudStorageLocation} className="cloud-icon-area">
+                                                                    <a
+                                                                        href={this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
+                                                                            new URL(this.state.incDetailsItem.cloudStorageLink).href : "/"}
+                                                                        target="_blank"
+                                                                        rel="noreferrer"
+                                                                        className={!this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
+                                                                            "disabled-link" : ""}
+                                                                    >
+                                                                        <CloudLink24Regular
+                                                                            className="cloud-icon"
+                                                                        />
+                                                                    </a>
+                                                                </span>
+                                                            </div>
+
                                                             {this.state.inputRegexValidation.incidentCloudStorageLinkHasError &&
                                                                 <label className="error-message-label">{this.props.localeStrings.cloudStorageFieldRegexMessage}</label>}
                                                             {this.state.inputValidation.cloudStorageLinkHasError &&
                                                                 <label className="error-message-label">{this.props.localeStrings.cloudStorageFieldErrorMessage}</label>
                                                             }
                                                         </div>
-                                                        <span title={this.props.localeStrings.testCloudStorageLocation}>
-                                                            <a
-                                                                href={this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
-                                                                    new URL(this.state.incDetailsItem.cloudStorageLink).href : "/"}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className={!this.dataService.isValidHttpUrl(this.state.incDetailsItem.cloudStorageLink) ?
-                                                                    "disabled-link" : ""}
-                                                            >
-                                                                <img
-                                                                    src={require("../assets/Images/CloudIcon.svg").default}
-                                                                    alt="Cloud Link"
-                                                                    className="cloud-icon"
-                                                                />
-                                                            </a>
-                                                        </span>
-                                                        <NorthstarCheckbox
-                                                            label={<div className={this.state.isEditMode ? "tgle-btn-label disabled-label" : "tgle-btn-label"}>
-                                                                {this.props.localeStrings.saveDefaultLabel}
-                                                                {this.iconWithTooltip(
-                                                                    "Info", //Icon library name
-                                                                    this.props.localeStrings.cloudStorageFieldSaveDefaultTooltipContent,
-                                                                    "tgle-btn-info-icon" //Class name
-                                                                )}
-                                                            </div>}
-                                                            disabled={this.state.isEditMode}
-                                                            className="assets-save-default-checkbox"
-                                                            onChange={(_: any, checked: any) => this.setState({ saveDefaultCloudStorageLink: checked })}
-                                                        />
+                                                        {!this.state.isEditMode &&
+                                                            <Fluent9CheckBox
+                                                                label={<div className={this.state.isEditMode ? "tgle-btn-label disabled-label" : "tgle-btn-label"}>
+                                                                    {this.props.localeStrings.saveDefaultLabel}
+                                                                    {this.iconWithTooltip(
+                                                                        "Info", //Icon library name
+                                                                        this.props.localeStrings.cloudStorageFieldSaveDefaultTooltipContent,
+                                                                        "tgle-btn-info-icon" //Class name
+                                                                    )}
+                                                                </div>}
+                                                                disabled={this.state.isEditMode}
+                                                                className="assets-save-default-checkbox"
+                                                                onChange={(_: any, checked: any) => this.setState({ saveDefaultCloudStorageLink: checked })}
+                                                            />
+                                                        }
                                                     </>
                                                 }
                                             </div>
+
                                         </Col>
                                         {!this.state.isEditMode &&
                                             <Col xl={10} lg={12}>
@@ -4644,9 +4634,9 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                                     className="incident-details-input-field"
                                                                                     successIndicator={false}
                                                                                 />
-                                                                                <CloseIcon
+                                                                                <Dismiss24Regular
                                                                                     className="chnl-remove-icon"
-                                                                                    title={this.props.localeStrings.headerDelete} size="large"
+                                                                                    title={this.props.localeStrings.headerDelete}
                                                                                     onClick={() => this.removeChannelInput(idx)}
                                                                                 />
                                                                             </div>
@@ -4666,7 +4656,7 @@ class IncidentDetails extends React.PureComponent<IIncidentDetailsProps, IIncide
                                                                     />
                                                                 }
                                                             </div>
-                                                            <NorthstarCheckbox
+                                                            <Fluent9CheckBox
                                                                 label={<div className="tgle-btn-label">
                                                                     {this.props.localeStrings.saveDefaultLabel}
                                                                     {this.iconWithTooltip(

@@ -178,7 +178,7 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                         </Flex>
                     </Flex>
                 </div >
-                <div className={`sub-header welcome-image-${this.props.currentThemeName}`}>
+                <div className={`sub-header${isDarkOrContrastTheme ? " sub-header-" + this.props.currentThemeName : ""}`}>
                     <div className='container' id="sub-heading">{this.props.localeStrings.welcome} {this.props.currentUserName}!</div>
                 </div>
             </div>

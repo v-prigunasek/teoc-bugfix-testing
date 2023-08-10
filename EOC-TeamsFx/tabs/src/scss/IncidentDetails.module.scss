@@ -219,6 +219,7 @@
         .ui-box {
             font: normal normal normal 16px/21px Segoe UI;
             opacity: 1;
+            color: var(--colorNeutralForeground1);
 
         }
 
@@ -816,12 +817,6 @@ div[class="incident-details"] {
                 th[class~="thead-border-left"] {
                     border-left: 0.25px solid #FFFFFF;
 
-                    img[class="role-edit-head-icon"],
-                    img[class="role-select-head-icon"],
-                    img[class="role-delete-head-icon"] {
-                        width: 22px;
-                        height: 22px;
-                    }
                 }
 
             }
@@ -858,18 +853,18 @@ div[class="incident-details"] {
                 }
 
                 //css for default-checkbox
-                div[class~="role-body-checkbox"],
-                div[class~="role-body-icons"] {
+                td[class~="role-body-checkbox"],
+                td[class~="role-body-icons"] {
                     display: flex;
                     justify-content: center;
                     align-items: center;
 
                     svg[class~="role-icon"] {
                         cursor: pointer;
-                    }
 
-                    svg[class~="role-icon"]:hover {
-                        color: var(--colorBrandForegroundLink);
+                        &:hover {
+                            color: var(--colorBrandBackgroundHover);
+                        }
                     }
                 }
 
@@ -928,15 +923,6 @@ div[class="incident-details"] {
                     margin-left: 0.75rem;
                 }
 
-                &:has(label[class~="error-message-label"]) {
-                    align-items: flex-start;
-
-                    div[class~="field-with-error"] {
-                        display: grid;
-                        row-gap: 10px;
-                    }
-                }
-
                 div[class~="inc-assets-tgle-btn"] {
                     margin-bottom: 0px;
                     min-width: 320px;
@@ -951,9 +937,68 @@ div[class="incident-details"] {
 
                     div[class~="ms-Toggle-innerContainer"] {
                         top: 1px;
+
+                        button[class~="ms-Toggle-background"] {
+                            background-color: var(--colorNeutralBackground1);
+                            border-color: var(--colorNeutralForeground1);
+
+                            &:hover {
+                                border-color: var(--colorBrandBackgroundHover);
+                            }
+
+                            span[class~="ms-Toggle-thumb"] {
+                                background-color: transparent;
+                                border-color: var(--colorNeutralForeground1);
+                            }
+                        }
                     }
                 }
 
+                div[class~="is-checked"] {
+
+                    div[class~="ms-Toggle-innerContainer"] {
+
+                        button[class~="ms-Toggle-background"] {
+                            background-color: var(--colorBrandBackgroundHover);
+                            border-color: var(--colorBrandBackgroundHover);
+
+                            span[class~="ms-Toggle-thumb"] {
+                                background-color: var(--colorBrandBackgroundHover);
+                                border-color: var(--colorNeutralBackground1);
+                            }
+                        }
+                    }
+                }
+
+                div[class~="cloud-link-fields"] {
+                    display: grid;
+                    row-gap: 10px;
+                    min-width: 410px;
+
+                    div[class~="cloud-storage-field"] {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+
+                        span[class~="cloud-icon-area"] {
+                            padding-left: 5px;
+                        }
+
+                        svg[class~="cloud-icon"] {
+                            cursor: pointer;
+                            color: var(--colorNeutralForeground1);
+
+                            &:hover {
+                                color: var(--colorBrandForegroundLinkHover);
+                            }
+                        }
+
+
+                        a[class~="disabled-link"] {
+                            pointer-events: none;
+                        }
+                    }
+                }
 
                 &:has(div[class~="additional-chnl-fields"]) {
                     align-items: flex-start;
@@ -969,17 +1014,14 @@ div[class="incident-details"] {
                         justify-content: space-between;
                         align-items: center;
 
-                        span[class~="chnl-remove-icon"] {
-                            padding-left: 30px;
+                        svg[class~="chnl-remove-icon"] {
                             cursor: pointer;
+                            color: var(--colorNeutralForeground1);
 
-                            svg {
-                                color: #585858;
-
-                                &:hover {
-                                    color: #303030;
-                                }
+                            &:hover {
+                                color: var(--colorBrandBackgroundHover);
                             }
+
                         }
                     }
 
@@ -1009,13 +1051,13 @@ div[class="incident-details"] {
                         div[class~="incident-details-input-field"] {
                             label {
                                 font: normal normal normal 16px/21px Segoe UI;
-                                color: #000000;
+                                color: var(--colorNeutralForeground1);
                                 opacity: 1;
                             }
 
                             label::after {
                                 content: " *";
-                                color: #FF0000;
+                                color: #ce0000;
                             }
                         }
                     }
@@ -1025,11 +1067,14 @@ div[class="incident-details"] {
                     width: 150px;
                     height: 40px;
                     background: none;
-                    border: 1px solid #000;
+                    border: 1px solid var(--colorNeutralForeground1);
                     margin-top: 10px;
+                    color: var(--colorNeutralForeground1);
 
                     &:hover {
-                        border-color: darkgray;
+                        background-color: var(--colorCompoundBrandForeground1Hover);
+                        color: var(--colorNeutralForegroundInvertedHover);
+
                     }
                 }
 
@@ -1041,8 +1086,9 @@ div[class="incident-details"] {
 
                 div[class~="disabled-input"] {
                     input {
-                        background-color: #D3D3D3;
-                        border: 1px solid #fff;
+                        background-color: var(--colorNeutralForegroundDisabled);
+                        color: var(--colorNeutralForeground1Selected);
+                        border: none;
                     }
                 }
 
@@ -1051,19 +1097,14 @@ div[class="incident-details"] {
                     padding-left: 35px;
                     min-width: 175px;
                     grid-area: 1 / 3 / span 1 / span 3;
+                    color: var(--colorNeutralForeground1);
+
 
                     div[class~="tgle-btn-label"] {
                         font-size: 14px;
                         line-height: 16px;
                     }
 
-                    div[class~="disabled-label"] {
-                        span[class~="tgle-btn-info-icon"] {
-                            i {
-                                color: rgb(179, 176, 173);
-                            }
-                        }
-                    }
                 }
 
                 span[class~="tgle-btn-info-icon"] {
@@ -1071,34 +1112,8 @@ div[class="incident-details"] {
                     position: relative;
                     top: 3px;
                     cursor: pointer;
-
-                    i {
-                        color: #000000;
-                        font-size: 16px;
-                    }
                 }
 
-                &:has(img[class~="cloud-icon"]) {
-                    div[class~="assets-save-default-checkbox"] {
-                        width: 165px;
-                        padding-left: 10px;
-                    }
-                }
-
-                img[class~="cloud-icon"] {
-                    width: 40px;
-                    height: 32px;
-                    opacity: 1;
-                    cursor: pointer;
-
-                    &:hover {
-                        filter: invert(40%) sepia(68%) saturate(6622%) hue-rotate(191deg) brightness(95%) contrast(101%);
-                    }
-                }
-
-                a[class~="disabled-link"] {
-                    pointer-events: none;
-                }
 
                 @media screen and (max-width:991px) {
                     display: grid;
@@ -1132,21 +1147,24 @@ div[class="incident-details"] {
                         width: fit-content;
                     }
 
-                    div[class~="additional-chnl-fields"] {
+                    div[class~="cloud-link-fields"] {
 
-                        div[class~="chnl-field-with-remove-icon"] {
+                        div[class~="cloud-storage-field"] {
 
-                            span[class~="chnl-remove-icon"] {
+                            svg[class~="cloud-icon"] {
                                 padding-left: 10px;
                             }
                         }
                     }
 
-                    span:has(img[class~="cloud-icon"]) {
-                        grid-area: 3 / 1 / span 1 / span 3;
-                        width: fit-content;
-                        margin-left: auto;
-                        margin-right: 40px;
+                    div[class~="additional-chnl-fields"] {
+
+                        div[class~="chnl-field-with-remove-icon"] {
+
+                            svg[class~="chnl-remove-icon"] {
+                                padding-left: 10px;
+                            }
+                        }
                     }
 
                     div[class~="guest-user-fields"] {
@@ -1293,7 +1311,8 @@ div[class="incident-details"] {
 
     }
 
-    div[class~="form-area-darkcontrast"] {
+    //accessibility color contrast fixes for dark and contrast mode
+    div[class~="incident-details-form-area-darkcontrast"] {
         background: var(--colorNeutralBackground1);
         border: none;
 
@@ -1308,6 +1327,25 @@ div[class="incident-details"] {
 
             label[class="message-label"] {
                 color: #FD656A;
+            }
+        }
+
+        div[class~=inc-assets-wrapper] {
+            div[class~=inc-assets-field] {
+
+                label[class~=error-message-label]
+                {
+                    color: #FD656A;
+                }
+                div[class~=guest-user-fields] {
+                    div[class~="guest-field-wrapper"] {
+                        div[class~="incident-details-input-field"] {
+                            label::after {
+                                color: #FD656A;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -1338,7 +1376,7 @@ div[class="incident-details"] {
                 tr[class~="role-grid-tbody"] {
                     font: normal normal normal 11pt/15pt Segoe UI;
 
-                    img[class="role-icon"] {
+                    svg[class="role-icon"] {
                         width: 10pt;
                         height: 12pt;
                     }
