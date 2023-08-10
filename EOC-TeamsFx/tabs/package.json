@@ -5,7 +5,6 @@
     "dependencies": {
         "@fluentui/react": "^8.48.0",
         "@fluentui/react-components": "^9.25.1",
-        "@fluentui/react-icons": "2.0.203",
         "@fluentui/react-northstar": "0.66.4",
         "@microsoft/applicationinsights-web": "^2.7.4",
         "@microsoft/mgt-components": "2.10.0",
@@ -58,8 +57,7 @@
         "moment-timezone": ">=0.5.35",
         "jsonwebtoken": ">=9.0.0",
         "follow-redirects": ">=1.14.8",
-        "@restart/ui": "1.4.1",
-        "@fluentui/react-icons": "2.0.203"
+        "@restart/ui": "1.4.1"
     },
     "devDependencies": {
         "@types/jest": "^26.0.15",
