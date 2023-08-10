@@ -187,7 +187,7 @@
    "_incidentNameRequired.comment": "This string is displayed when required field is missing",
    "incidentTypeRequired": "Incident Type is required.",
    "_incidentTypeRequired.comment": "This string is displayed when required field is missing",
-   "startDateRequired": "Start Date is required.",
+   "startDateRequired": "Start Time is required.",
    "_startDateRequired.comment": "This string is displayed when required field is missing",
    "statusRequired": "Status is required.",
    "_statusRequired.comment": "This string is displayed when required field is missing",

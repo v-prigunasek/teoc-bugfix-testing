@@ -29,6 +29,11 @@ div[class~="admin-settings"] {
                 bottom: 1px;
                 margin-left: 1px;
             }
+            span[class="back-label"]:focus-visible {
+                outline: 2px solid #414156;
+                border-radius: 3px;
+                outline-offset: 1px;
+            }
 
             span[class="go-back"] {
                 cursor: pointer;
@@ -183,6 +188,10 @@ div[class~="admin-settings"] {
             }
 
             div[class="team-name-config-form-area"] {
+                label[class~="order-label"] {                  
+                    @include fontstyles(normal, #000000, 16px, 21px, left);                   
+                    margin-bottom: 0.25rem;
+                }
                 div[class~="team-name-config-order-dropdown"] {
                     margin-bottom: 25px;
 

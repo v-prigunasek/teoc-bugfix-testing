@@ -83,6 +83,14 @@ div[class="eoc-header"] {
         bottom: 1px;
     }
 
+    a:has(img[class~="feedback-icon"]):focus-visible,
+    a:has(img[class~="header-icon"]):focus-visible,
+    img[class~="header-icon"]:focus-visible {
+        outline: 2px solid white;
+        border-radius: 3px;
+        outline-offset: 3px;
+    }
+
 }
 
 div[class="sub-header"] {

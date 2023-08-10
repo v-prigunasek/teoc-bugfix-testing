@@ -7,6 +7,7 @@ import Row from 'react-bootstrap/esm/Row';
 import "../scss/AdminSettings.module.scss";
 import RoleSettings from './RoleSettings';
 import { TeamNameConfig } from './TeamNameConfig';
+import * as constants from '../common/Constants';
 
 export interface IAdminSettingsProps {
     localeStrings: any;
@@ -50,9 +51,14 @@ export default class AdminSettings extends React.Component<IAdminSettingsProps, 
             <div className='admin-settings'>
                 <div className=".col-xs-12 .col-sm-8 .col-md-4 container admin-settings-path">
                     <label>
-                        <span onClick={() => this.props.onBackClick("")} className="go-back">
+                        <span
+                            onClick={() => this.props.onBackClick("")}
+                            onKeyDown={(event) => {
+                                if (event.key === constants.enterKey)
+                                    this.props.onBackClick("")
+                            }} className="go-back">
                             <ChevronStartIcon className="path-back-icon" />
-                            <span className="back-label" title="Back">{this.props.localeStrings.back}</span>
+                            <span className="back-label" role="button" tabIndex={0} title="Back">{this.props.localeStrings.back}</span>
                         </span> &nbsp;&nbsp;
                         <span className="right-border">|</span>
                         <span>&nbsp;&nbsp;{this.props.localeStrings.adminSettingsLabel}</span>
@@ -60,7 +66,7 @@ export default class AdminSettings extends React.Component<IAdminSettingsProps, 
                 </div>
                 <div className='admin-settings-wrapper'>
                     <div className="container">
-                        <div className="admin-settings-heading">{this.props.localeStrings.adminSettingsLabel}</div>
+                        <h1 aria-live="polite" role="alert"><div className="admin-settings-heading">{this.props.localeStrings.adminSettingsLabel}</div></h1>
                         <Row xl={1} lg={1} md={1} sm={1} xs={1}>
                             <Col md={12}>
                                 <div className="toggle-setting-type">

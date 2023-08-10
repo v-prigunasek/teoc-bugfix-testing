@@ -649,6 +649,8 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
                                             dismissButtonAriaLabel="Close"
                                             onDismiss={() => this.setState({ showSuccessMessageBar: false, successMessage: "" })}
                                             className="message-bar"
+                                            role="alert"
+                                            aria-live="polite"
                                         >
                                             {this.state.successMessage}
                                         </MessageBar>
@@ -662,6 +664,8 @@ export class EOCHome extends React.Component<IEOCHomeProps, IEOCHomeState>  {
                                             dismissButtonAriaLabel="Close"
                                             onDismiss={() => this.setState({ showErrorMessageBar: false, errorMessage: "" })}
                                             className="message-bar"
+                                            role="alert"
+                                            aria-live="polite"
                                         >
                                             {this.state.errorMessage}
                                         </MessageBar>

@@ -64,7 +64,7 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                                 className="ms-logo"
                                 title={this.props.localeStrings.appTitle}
                             />
-                            <span className="header-text" title={this.props.localeStrings.appTitle}>{this.props.localeStrings.appTitle}</span>
+                            <main aria-label={this.props.localeStrings.appTitle}><span className="header-text" title={this.props.localeStrings.appTitle}>{this.props.localeStrings.appTitle}</span></main>
                         </Flex>
                         <Flex gap={this.state.isDesktop ? "gap.large" : "gap.medium"} vAlign="center">
                             <FlexItem>
@@ -75,6 +75,12 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                                         id={buttonId}
                                         className="header-icon"
                                         onClick={this.toggleIsCalloutVisible}
+                                        onKeyUp={(event) => {
+                                            if (event.key === constants.enterKey)
+                                                this.toggleIsCalloutVisible();
+                                        }}
+                                        tabIndex={0}
+                                        role="button"
                                     />}
                                     content={this.props.localeStrings.moreInfo}
                                     pointing={false}
@@ -84,12 +90,14 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                                 <a
                                     href={constants.helpUrl}
                                     target="_blank" rel="noreferrer"
+                                    tabIndex={0}
                                 >
                                     <Tooltip
                                         trigger={<img
                                             src={require("../assets/Images/HelpIcon.svg").default}
                                             alt="Help"
                                             className="header-icon"
+                                            role="link"
                                         />}
                                         content={this.props.localeStrings.support}
                                         pointing={false}
@@ -97,12 +105,13 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                                 </a>
                             </FlexItem>
                             <FlexItem>
-                                <a href={constants.feedbackUrl} target="_blank" rel="noreferrer">
+                                <a href={constants.feedbackUrl} target="_blank" tabIndex={0} rel="noreferrer">
                                     <Tooltip
                                         trigger={<img
                                             src={require("../assets/Images/FeedbackIcon.svg").default}
                                             alt="Feedback"
                                             className='feedback-icon'
+                                            role="link"
                                         />}
                                         content={{ content: this.props.localeStrings.feedback }}
                                         pointing={false}
@@ -125,28 +134,28 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                         onDismiss={this.toggleIsCalloutVisible}
                         setInitialFocus
                     >
-                        <Text
+                        <h2><Text
                             block variant="xLarge" className="info-title">
                             {this.props.localeStrings.aboutApp}
-                        </Text>
+                        </Text></h2>
                         <Text block variant="small" className="info-titlebody">
                             {this.props.localeStrings.appDescription}
                         </Text>
-                        <Text block variant="xLarge" className="info-title">
+                        <h2> <Text block variant="xLarge" className="info-title">
                             {this.props.localeStrings.headerAdditionalResource}
-                        </Text>
+                        </Text></h2>
                         <Text block variant="small" className="info-titlebody">
                             {this.props.localeStrings.bodyAdditionalResource}
                         </Text>
-                        <Text block variant="xLarge" className="info-title">
+                        <h2> <Text block variant="xLarge" className="info-title">
                             {this.props.localeStrings.msPublicSector}
-                        </Text>
+                        </Text></h2>
                         <Link href={constants.msPublicSectorUrl} target="_blank" className="info-link">
                             {constants.msPublicSectorUrl}
                         </Link>
-                        <Text block variant="xLarge" className="info-title">
+                        <h2> <Text block variant="xLarge" className="info-title">
                             {this.props.localeStrings.drivingAdoption}
-                        </Text>
+                        </Text></h2>
                         <Link href={constants.drivingAdoptionUrl} target="_blank" className="info-link">
                             {constants.drivingAdoptionUrl}
                         </Link>
@@ -171,8 +180,15 @@ export default class EocHeader extends Component<IHeaderProps, HeaderState> {
                         <Text block variant="small">
                             {this.props.localeStrings.solutionLink} <Link href={constants.m365EocAppUrl} target="_blank" rel="noreferrer">{this.props.localeStrings.githubLabel}</Link>
                         </Text>
-                        <Link href={constants.m365EocAppUrl} target="_blank" className="info-link">
-                            {constants.m365EocAppUrl}
+                        <Link
+                            href={constants.m365EocAppUrl}
+                            target="_blank"
+                            className="info-link"
+                            onKeyDown={(event: any) => {
+                                if (!event.shiftKey)
+                                    this.toggleIsCalloutVisible()
+                            }}>
+                              {constants.m365EocAppUrl}
                         </Link>
                     </Callout>
                 )}
